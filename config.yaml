@@ -1,0 +1,45 @@
+# RT Commission Dashboard Configuration
+# This file contains workspace-specific settings that can be customized
+
+# Workspace/Company Configuration
+workspace:
+  name: "RT Commission Dashboard"
+  company: "RealTime"
+  domain: "rt.local"
+  
+# Database Configuration  
+database:
+  filename: "rt_commission_dashboard.db"
+  
+# Commission & Rewards Configuration
+commission:
+  rates:
+    level_1: 0.10  # 10% for direct upline
+    level_2: 0.05  # 5% for second level upline  
+    level_3: 0.02  # 2% for third level upline
+  max_levels: 5    # Maximum levels to traverse up the hierarchy
+
+# User Roles Configuration
+roles:
+  admin: 
+    label: "Administrator"
+    permissions: ["Q1", "Q2", "Q3", "Q4"]
+  affiliate:
+    label: "Affiliate"  
+    permissions: ["Q1", "Q2", "Q3", "Q4"]
+  ctv:
+    label: "Collaborator"
+    permissions: ["Q1", "Q2"]
+
+# Application Configuration
+app:
+  title: "RT Commission Dashboard"
+  port: 8000
+  secret_key: "rt_dashboard_secret_key_123"
+  theme: "dark"
+  
+# Mock Data Configuration (for testing)
+mock_data:
+  enabled: true
+  admin_email: "admin@rt.local"
+  sample_domain: "rt.local"
