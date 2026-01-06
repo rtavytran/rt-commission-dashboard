@@ -17,7 +17,10 @@ def affiliates_page():
     
     with Theme.card():
         # Tree Construction - Using Nested Data
-        hierarchy = db.get_downline_nested(user['id'])
+        if user.get('role') == 'admin':
+            hierarchy = db.get_entire_network_nested()
+        else:
+            hierarchy = db.get_downline_nested(user['id'])
         
         def build_tree_nodes(nodes):
             tree_nodes = []

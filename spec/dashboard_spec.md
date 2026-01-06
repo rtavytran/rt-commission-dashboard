@@ -34,12 +34,40 @@
 *   **KPI Rewards**: Bonuses for meeting performance targets.
     *   *Recorded as*: `type='kpi_reward'`
 
-### 2. Commission Structure (Auto-Calculated)
-The system automatically calculates and distributes commissions up to **5 levels** when a retail sale occurs.
-*   **Level 1 (Direct Parent)**: **10%** of Sale Amount.
-*   **Level 2 (Grandparent)**: **5%** of Sale Amount.
-*   **Level 3**: **2%** of Sale Amount.
-*   *Levels 4-5*: Currently 0% (Reserved for future).
+### 2. Commission Structure (Volume-Based & Differential)
+The system implements a **Dynamic Volume-Based** commission model with **Stateful Recalculation**.
+
+#### A. Volume Tiers
+Rates are properly determined by **Monthly Sales Volume** (Personal + Direct Downline F1).
+*   **> 0**: 20%
+*   **> 200M**: 22%
+*   **> 400M**: 25%
+*   **> 1B**: 30%
+*   **> 2B**: 35%
+*   *Strategic Partner*: Fixed 35%
+
+#### B. Shared Opportunities (Co-Selling)
+*   **Ranking Volume Handling**:
+    *   **Sharer**: Gets **100% of the sale amount** counted toward their monthly tier ranking.
+    *   **Receiver**: Gets **0% volume credit** for tier ranking (does not count).
+    *   *Example*: User A (Sharer) shares a 10M sale with User B (Receiver). User A gets 10M volume for tier ranking; User B gets 0M volume for tier ranking.
+*   **Commission Split**:
+    *   Both parties earn commission on **50% of the sale value** using their respective tier rates.
+    *   **Sharer**: Commission = (Sharer's Tier Rate) × 50% × Sale Amount
+    *   **Receiver**: Commission = (Receiver's Tier Rate) × 50% × Sale Amount
+    *   **Upline**: Uplines of *both* parties earn differential commissions based on their respective downline's volumes and tiers.
+
+#### C. Inactive User Policy (4% Rule)
+*   **Definition**: A user with **0 Personal Retail Key Sales** in the current month.
+*   **Penalty**: Commission Rate is capped at **4%**.
+*   **Scope**: Applies to Direct Sales, Shared Sales, and Received Sales.
+*   **Differential**: Inactive users typically do not receive overrides unless configured otherwise.
+
+#### C. Differential Bonus (Recalculation)
+*   **Mechanism**: `Monthly Stats` table tracks live volume and rates.
+*   **Trigger**: Any new sale triggers a recursive recalculation of the seller and their upline.
+*   **Payout**: Upline earns `(UplineRate - DownlineRate) * DownlineGroupVolume`.
+*   **Consistency**: Guarantees that users are paid based on their *final* End-of-Month tier for all transactions in that month.
 
 ### 3. Data Visibility
 *   **Admins**: View **ALL** transaction data globally.

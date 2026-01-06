@@ -27,7 +27,7 @@ def layout(content_func):
             def toggle_lang():
                 new_lang = 'en' if get_current_lang() == 'vi' else 'vi'
                 set_lang(new_lang)
-                ui.open(app.storage.user.get('referrer_path', '/')) # Reload current page
+                ui.run_javascript('window.location.reload()')
 
             current_lang = get_current_lang()
             lang_label = 'VI' if current_lang == 'vi' else 'EN'

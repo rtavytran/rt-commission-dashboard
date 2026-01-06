@@ -36,9 +36,14 @@ def users_page():
         ]
         
         # Custom slot not needed for basic text, but we could add chips in future.
-        ui.table(
+        # Search Filter
+        # Search Filter
+        with ui.row().classes('w-full mb-4 justify-end'):
+            search = ui.input(placeholder='Search...').props('outlined dense dark append-icon=search').classes('w-64')
+
+        table = ui.table(
             columns=columns, 
             rows=rows, 
             row_key='id', 
             pagination=10
-        ).classes('w-full').props('flat bordered')
+        ).classes('w-full').props('flat bordered').bind_filter_from(search, 'value')

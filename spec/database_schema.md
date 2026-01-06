@@ -57,10 +57,134 @@ Records all financial events.
 | `type` | `TEXT` | `varchar` | Enum: `retail_sales`, `commission`, `kpi_reward`. |
 | `status` | `TEXT` | `varchar` | Enum: `pending`, `approved`. |
 | `reference_id` | `TEXT` | `uuid` | ID of the source transaction (e.g., the retail sale that generated this comm). |
+| `shared_with_id` | `TEXT` | `uuid` | For Shared Opportunities: The other beneficiary User ID. |
 | `metadata` | `TEXT` | `jsonb` | JSON: `{customer_name, product_id, order_details}`. |
 | `created_at` | `DATETIME` | `timestamptz` | timestamp. |
 
-## Implementation Notes
+### 3. Monthly Stats (`monthly_stats`)
+Stateful snapshot of monthly performance. Used for dashboards and computing tier rates.
 
-- **Phase 1 (SQLite)**: Tables are created automatically by `DBHandler._init_db()` if they don't exist.
-- **Phase 2 (Supabase)**: These tables will need to be created in the Supabase Dashboard SQL Editor.
+| Column | Type (SQLite) | Type (Supabase) | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `TEXT` | `text` | Composite Key: `{user_id}_{YYYY-MM}`. |
+| `user_id` | `TEXT` | `uuid` | Foreign Key to Users. |
+| `month` | `TEXT` | `varchar` | Period: `YYYY-MM`. |
+| `personal_sales_volume` | `REAL` | `numeric` | Direct Retail Sales value (100% counts for tier ranking). |
+| `shared_out_volume` | `REAL` | `numeric` | Full volume of sales shared with others (100% counts for tier ranking). |
+| `received_volume` | `REAL` | `numeric` | Volume received from others (does NOT count for tier ranking). |
+| `tier_rate` | `REAL` | `numeric` | Effective Commission Rate (0.04 to 0.35). |
+| `comm_direct` | `REAL` | `numeric` | Earnings from Personal Sales. |
+| `comm_shared` | `REAL` | `numeric` | Earnings from Shared Sales. |
+| `comm_received` | `REAL` | `numeric` | Earnings from Received Sales. |
+| `comm_override` | `REAL` | `numeric` | Earnings from Downline Differential. |
+| `total_commission` | `REAL` | `numeric` | Total Earnings. |
+| `last_updated` | `DATETIME` | `timestamptz` | Last calculation timestamp. |
+
+## 4. Data Lifecycle & Operations
+
+### A. Transactions (`transactions`)
+*   **Retail Sales (`retail_sales`)**: 
+    *   **How to Insert**: MUST use `db.create_retail_sale(user_id, amount, ...)` in Python.
+    *   **Why**: This method acts as the **Trigger**. It inserts the sale record *AND* immediately initiates the commission calculation sequence.
+    *   **Warning**: Inserting directly via SQL will **NOT** generate commissions or update monthly stats.
+*   **Commissions**: Generated automatically by the system.
+*   **Rewards (`kpi_reward`)**: Inserted manually via SQL or Admin UI.
+
+### B. Monthly Stats (`monthly_stats`)
+This table is **System-Managed**. It acts as a live cache of the month's performance.
+
+*   **Creation**: A row `{user_id}_{YYYY-MM}` is automatically created the first time any activity (sale, shared sale, or commission) occurs for that user in the month.
+*   **Update Mechanism (Stateful Recalculation)**:
+    1.  **Trigger**: A `retail_sales` transaction is committed.
+    2.  **Volume Update**: The system updates the `personal_sales_volume` (or shared volumes) for the seller.
+    3.  **Tier Recalculation**: Based on the new total volume, the `tier_rate` is updated (e.g., from 20% -> 22%).
+    4.  **Commission Sync**: The system re-calculates all commission earnings (`comm_direct`, `comm_override`) for the *entire month* using the new rate.
+    5.  **Upline Propagation**: This process repeats recursively for the user's direct parent (`parent_id`) up to the root or max levels.
+
+## 5. Appendix: Supabase Automation Logic
+To enable automatic `monthly_stats` updates on Supabase without relying on Python, use this PL/pgSQL Trigger.
+
+### 1. Helper: Calculate Tier Rate
+```sql
+CREATE OR REPLACE FUNCTION get_commission_rate(volume NUMERIC) 
+RETURNS NUMERIC AS $$
+BEGIN
+    IF volume > 2000000000 THEN RETURN 0.35;
+    ELSIF volume > 1000000000 THEN RETURN 0.30;
+    ELSIF volume > 400000000 THEN RETURN 0.25;
+    ELSIF volume > 200000000 THEN RETURN 0.22;
+    ELSE RETURN 0.20;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### 2. Core Logic: Recalculate Stats & Commissions
+```sql
+CREATE OR REPLACE PROCEDURE recalculate_monthly_stats(p_user_id TEXT, p_month TEXT)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_total_vol NUMERIC;
+    v_new_rate NUMERIC;
+    v_parent_id TEXT;
+    v_stat_id TEXT := p_user_id || '_' || p_month;
+BEGIN
+    -- 1. Calculate Total Volume (Personal + Shared + Received)
+    SELECT COALESCE(SUM(personal_sales_volume + shared_out_volume + received_volume), 0)
+    INTO v_total_vol
+    FROM monthly_stats
+    WHERE id = v_stat_id;
+
+    -- 2. Determine New Rate
+    v_new_rate := get_commission_rate(v_total_vol);
+
+    -- 3. Update Stats Table
+    UPDATE monthly_stats 
+    SET tier_rate = v_new_rate,
+        total_commission = (personal_sales_volume * v_new_rate) -- Simplified Example
+    WHERE id = v_stat_id;
+
+    -- 4. Recursive Propagation (Find Parent & Recalculate)
+    SELECT parent_id INTO v_parent_id FROM users WHERE id = p_user_id;
+    
+    IF v_parent_id IS NOT NULL THEN
+        -- In a real implementation, you would update the parent's "Downline Volume" here before calling calc
+        CALL recalculate_monthly_stats(v_parent_id, p_month);
+    END IF;
+END;
+$$;
+```
+
+### 3. The Trigger Function
+```sql
+CREATE OR REPLACE FUNCTION handle_new_transaction()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_month TEXT;
+    v_stat_id TEXT;
+BEGIN
+    IF NEW.type = 'retail_sales' THEN
+        v_month := to_char(NEW.created_at, 'YYYY-MM');
+        v_stat_id := NEW.user_id || '_' || v_month;
+
+        -- 1. Upsert Initial Volume
+        INSERT INTO monthly_stats (id, user_id, month, personal_sales_volume, last_updated)
+        VALUES (v_stat_id, NEW.user_id, v_month, NEW.amount, NOW())
+        ON CONFLICT (id) DO UPDATE 
+        SET personal_sales_volume = monthly_stats.personal_sales_volume + EXCLUDED.personal_sales_volume,
+            last_updated = NOW();
+
+        -- 2. Trigger Recalculation Chain
+        CALL recalculate_monthly_stats(NEW.user_id, v_month);
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### 4. The Trigger Definition
+```sql
+CREATE TRIGGER on_transaction_insert
+AFTER INSERT ON transactions
+FOR EACH ROW EXECUTE FUNCTION handle_new_transaction();
+```

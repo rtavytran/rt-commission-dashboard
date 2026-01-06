@@ -3,21 +3,31 @@
 
 # Workspace/Company Configuration
 workspace:
-  name: "RT Commission Dashboard"
-  company: "RealTime"
+  name: "Dashboard"
+  company: "Nagen"
   domain: "rt.local"
   
 # Database Configuration  
 database:
-  filename: "rt_commission_dashboard.db"
+  type: "sqlite" # options: sqlite, supabase
+  filename: "rt_commission_dashboard_v2.db" # for sqlite
+  supabase:
+    url: "" # set via env var SUPABASE_URL preferred
+    key: "" # set via env var SUPABASE_KEY preferred
   
 # Commission & Rewards Configuration
 commission:
-  rates:
-    level_1: 0.10  # 10% for direct upline
-    level_2: 0.05  # 5% for second level upline  
-    level_3: 0.02  # 2% for third level upline
-  max_levels: 5    # Maximum levels to traverse up the hierarchy
+  tiers:
+    - {threshold: 0, rate: 0.20}           # > 0: 20%
+    - {threshold: 200000000, rate: 0.22}   # > 200M: 22%
+    - {threshold: 400000000, rate: 0.25}   # > 400M: 25% 
+    - {threshold: 1000000000, rate: 0.30}  # > 1B: 30%
+    - {threshold: 2000000000, rate: 0.35}  # > 2B: 35%
+  
+  role_rates:
+    strategic_partner: 0.35 # Fixed rate for Strategic Partner
+
+  max_levels: 10   # Increased specifically for differential depth
 
 # User Roles Configuration
 roles:
@@ -37,6 +47,7 @@ app:
   port: 8000
   secret_key: "rt_dashboard_secret_key_123"
   theme: "dark"
+  currency: "vnd" # options: usd, vnd
   
 # Mock Data Configuration (for testing)
 mock_data:

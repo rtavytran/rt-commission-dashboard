@@ -1,19 +1,39 @@
 [project]
 name = "rt-commission-dashboard"
-version = "0.1.0"
-description = "Sales & Commission Dashboard"
+version = "1.0.0"
+description = "Multi-tier sales & commission tracking dashboard with hierarchical affiliate networks"
 readme = "README.md"
+license = "Proprietary"
 requires-python = ">=3.10"
-authors = [{name = "Antigravity", email = "antigravity@gemini.com"}]
+authors = [
+    {name = "RealTimeX Team", email = "info@realtimex.ai"}
+]
+keywords = ["sales", "commission", "dashboard", "affiliate", "mlm", "network-marketing"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Office/Business :: Financial",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
 dependencies = [
     "nicegui>=1.4.0",
     "plotly>=5.0.0",
     "pandas>=2.0.0",
     "python-dotenv>=1.0.0",
     "supabase>=2.0.0",
-    "faker>=20.0.0",  # For generating test data in Phase 1
-    "pyyaml>=6.0.0"   # For configuration file support
+    "faker>=20.0.0",
+    "pyyaml>=6.0.0"
 ]
+
+[project.urls]
+Homepage = "https://github.com/rtavytran/rt-commission-dashboard"
+Source = "https://github.com/rtavytran/rt-commission-dashboard"
+Issues = "https://github.com/rtavytran/rt-commission-dashboard/issues"
+Changelog = "https://github.com/rtavytran/rt-commission-dashboard/blob/main/CHANGELOG.md"
 
 [project.scripts]
 rt-commission-dashboard = "rt_commission_dashboard.main:main"

@@ -5,40 +5,47 @@ from rt_commission_dashboard.core.db_handler import DBHandler
 import pandas as pd
 
 from rt_commission_dashboard.core.i18n import t
+from rt_commission_dashboard.core.currency import format_currency
 
 @layout
 def reports_page():
     user = app.storage.user.get('user_info', {})
     db = DBHandler()
     
+    # Title
     with ui.row().classes('items-center mb-6'):
-        ui.icon('bar_chart', size='md', color=Theme.SECONDARY)
+        ui.icon('summarize', size='md', color=Theme.SECONDARY)
         Theme.title(t('rep.title'))
         
-    Theme.subtitle(f"{t('rep.subtitle')} {user['full_name']}")
-    
-    # --- Income Breakdown (Doanh thu & Thưởng) ---
-    stats = db.get_kpi_stats(user['id'])
-    
-    with ui.grid(columns=3).classes('w-full gap-4 mb-6'):
-        with Theme.card().classes('bg-slate-800 border-l-4 border-blue-500'):
-            ui.label(t('rep.retail_rev')).classes('text-xs text-gray-400 uppercase')
-            ui.label(f"${stats['revenue']:,.2f}").classes('text-2xl font-bold text-white')
-            
-        with Theme.card().classes('bg-slate-800 border-l-4 border-green-500'):
-            ui.label(t('rep.comm_share')).classes('text-xs text-gray-400 uppercase')
-            ui.label(f"${stats['commission_share']:,.2f}").classes('text-2xl font-bold text-white')
-            
-        with Theme.card().classes('bg-slate-800 border-l-4 border-purple-500'):
-            ui.label(t('rep.kpi_reward')).classes('text-xs text-gray-400 uppercase')
-            ui.label(f"${stats['kpi_reward']:,.2f}").classes('text-2xl font-bold text-white')
+    # --- Data Table Section ---
+
 
     with Theme.card():
-        # --- Filters ---
+    # --- Filters ---
         from datetime import datetime
         current_year = datetime.now().year
         
+        
+        # User Filter (Admin or Parent)
+        viewable_users = db.get_viewable_users(user['id'], user.get('role', 'ctv'))
+        user_options = {u['u']: u['label'] for u in viewable_users}
+        target_user_id = user['id'] # Default
+        user_select = None
+        
         with ui.row().classes('w-full gap-4 items-center mb-6'):
+            # Show User Selector if >1 option (Self + Downline)
+            if len(user_options) > 1:
+                # Safe default value
+                default_val = user['id']
+                if default_val not in user_options:
+                     default_val = list(user_options.keys())[0] if user_options else None
+                
+                user_select = ui.select(
+                    options=user_options,
+                    value=default_val, 
+                    label=t('nav.users')
+                ).classes('w-64').props('outlined dense dark use-input filter') 
+            
             year_select = ui.select(
                 options=[str(y) for y in range(current_year, current_year-5, -1)], 
                 value=str(current_year), 
@@ -58,31 +65,45 @@ def reports_page():
             ).classes('w-40').props('outlined dense dark')
             
             ui.button(t('rep.apply'), on_click=lambda: update_table()).classes('h-10').props('unelevated color=indigo-600')
+            
+            ui.space()
+            search_input = ui.input(placeholder='Search...').props('outlined dense dark append-icon=search').classes('w-48')
 
         # --- Data Table ---
         columns = [
-            {'name': 'created_at', 'label': 'Date', 'field': 'created_at', 'sortable': True},
-            {'name': 'type', 'label': 'Type', 'field': 'type', 'sortable': True},
-            {'name': 'amount', 'label': 'Amount', 'field': 'amount', 'sortable': True},
-            {'name': 'status', 'label': 'Status', 'field': 'status'},
-            {'name': 'metadata', 'label': 'Details', 'field': 'metadata'},
+            {'name': 'created_at', 'label': 'Date', 'field': 'created_at', 'sortable': True, 'align': 'left'},
+            {'name': 'type', 'label': 'Type', 'field': 'type', 'sortable': True, 'align': 'left'},
+            {'name': 'amount', 'label': 'Amount', 'field': 'amount', 'sortable': True, 'align': 'right'},
+            {'name': 'status', 'label': 'Status', 'field': 'status', 'align': 'center'},
+            {'name': 'metadata', 'label': 'Details', 'field': 'metadata', 'align': 'left'},
         ]
         
-        table = ui.table(columns=columns, rows=[], pagination=10).classes('w-full').props('flat bordered')
+        table = ui.table(columns=columns, rows=[], pagination=10).classes('w-full').props('flat bordered').bind_filter_from(search_input, 'value')
         
         def update_table():
+            # Determine target user
+            filter_user_id = user_select.value if user_select else user['id']
+            
             rows = db.get_transactions_filtered(
-                user['id'], 
+                filter_user_id, 
                 month=month_select.value, 
                 year=year_select.value, 
                 type_filter=type_select.value
             )
             # Format rows for display
+            from datetime import datetime
             formatted_rows = []
             for row in rows:
                 row_dict = dict(row)
-                row_dict['amount'] = f"${row_dict['amount']:,.2f}"
+                row_dict['amount'] = format_currency(row_dict['amount'])
                 row_dict['type'] = row_dict['type'].replace('_', ' ').title()
+                
+                # Format Date
+                try:
+                    dt = datetime.strptime(row_dict['created_at'], '%Y-%m-%d %H:%M:%S')
+                    row_dict['created_at'] = dt.strftime('%d/%m/%Y %H:%M')
+                except Exception:
+                    pass # Keep original if parse fails
                 
                 # Clean up metadata display
                 if row_dict.get('metadata'):

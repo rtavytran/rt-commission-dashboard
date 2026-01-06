@@ -120,14 +120,13 @@ class Config:
         """Get the database filename."""
         return self.get('database.filename', 'rt_commission_dashboard.db')
     
-    def get_commission_rates(self) -> Dict[int, float]:
-        """Get commission rates by level."""
-        rates = self.get('commission.rates', {})
-        return {
-            1: rates.get('level_1', 0.10),
-            2: rates.get('level_2', 0.05),  
-            3: rates.get('level_3', 0.02)
-        }
+    def get_commission_tiers(self) -> list:
+        """Get commission tiers."""
+        return self.get('commission.tiers', [])
+    
+    def get_role_rates(self) -> Dict[str, float]:
+        """Get fixed rates for specific roles."""
+        return self.get('commission.role_rates', {})
     
     def get_max_commission_levels(self) -> int:
         """Get maximum commission levels."""
@@ -144,6 +143,10 @@ class Config:
     def get_secret_key(self) -> str:
         """Get the application secret key."""
         return self.get('app.secret_key', 'rt_dashboard_secret_key_123')
+
+    def get_currency(self) -> str:
+        """Get the application currency (usd/vnd)."""
+        return self.get('app.currency', 'usd').lower()
     
     def get_sample_domain(self) -> str:
         """Get the sample domain for mock data."""
