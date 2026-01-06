@@ -3,7 +3,7 @@ name = "rt-commission-dashboard"
 version = "1.0.0"
 description = "Multi-tier sales & commission tracking dashboard with hierarchical affiliate networks"
 readme = "README.md"
-license = "Proprietary"
+license = {file = "LICENSE"}
 requires-python = ">=3.10"
 authors = [
     {name = "RealTimeX Team", email = "info@realtimex.ai"}
