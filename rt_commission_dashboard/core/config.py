@@ -25,30 +25,46 @@ class Config:
     
     def _load_config(self):
         """Load configuration from config.yaml file."""
+        # Start with default configuration
+        self._config_data = self._get_default_config()
+
         # Look for config.yaml in the project root
         config_paths = [
             Path(__file__).parent.parent.parent / "config.yaml",  # Project root
             Path.cwd() / "config.yaml",  # Current working directory
             Path(__file__).parent / "config.yaml",  # Same directory as this file
         ]
-        
-        config_file = None
+
+        # Try to load base config
         for path in config_paths:
             if path.exists():
-                config_file = path
-                break
-        
-        if config_file is None:
-            # Use default configuration if no config file found
-            self._config_data = self._get_default_config()
-            return
-            
-        try:
-            with open(config_file, 'r', encoding='utf-8') as f:
-                self._config_data = yaml.safe_load(f) or {}
-        except Exception as e:
-            print(f"Warning: Could not load config file {config_file}: {e}")
-            self._config_data = self._get_default_config()
+                try:
+                    with open(path, 'r', encoding='utf-8') as f:
+                        base_config = yaml.safe_load(f) or {}
+                        self._config_data.update(base_config)
+                    break
+                except Exception as e:
+                    print(f"Warning: Could not load config file {path}: {e}")
+
+        # Try to load user settings from config/settings.yaml
+        from rt_commission_dashboard.core.paths import get_app_dir
+        settings_path = get_app_dir() / 'config' / 'settings.yaml'
+        if settings_path.exists():
+            try:
+                with open(settings_path, 'r', encoding='utf-8') as f:
+                    user_settings = yaml.safe_load(f) or {}
+                    # Deep merge user settings into config
+                    self._deep_merge(self._config_data, user_settings)
+            except Exception as e:
+                print(f"Warning: Could not load settings file {settings_path}: {e}")
+
+    def _deep_merge(self, base: dict, override: dict):
+        """Deep merge override dict into base dict."""
+        for key, value in override.items():
+            if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+                self._deep_merge(base[key], value)
+            else:
+                base[key] = value
     
     def _get_default_config(self) -> Dict[str, Any]:
         """Return default configuration when no config file is available."""

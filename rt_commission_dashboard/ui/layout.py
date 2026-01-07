@@ -59,6 +59,7 @@ def layout(content_func):
                 ui.label('ADMIN').classes('text-xs font-bold text-gray-500 ml-4 mb-2 mt-4')
                 nav_link(t('nav.users'), 'group', '/admin/users')
                 nav_link(t('nav.contracts'), 'description', '/admin/contracts')
+                nav_link(t('nav.settings'), 'settings', '/admin/settings')
 
         # --- Main Content ---
         # Store current path for reload

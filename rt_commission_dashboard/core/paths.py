@@ -2,27 +2,34 @@ import os
 import sys
 from pathlib import Path
 
-def get_app_dir():
-    """Returns the root directory of the application."""
-    # Determine if running as a script or frozen exe
-    if getattr(sys, 'frozen', False):
-        return Path(sys.executable).parent
-    else:
-        return Path(os.getcwd())
+def get_package_dir():
+    """Returns the directory where the package is installed."""
+    # This returns the directory containing this file (core/)
+    # Then we go up one level to get rt_commission_dashboard/
+    return Path(__file__).parent.parent
 
 def get_data_dir():
     """Returns the directory where data should be stored."""
     # Check for env var override
     env_dir = os.getenv('RT_COMMISSION_DATA_DIR')
     if env_dir:
-        path = Path(env_dir)
-        path.mkdir(parents=True, exist_ok=True)
+        # Expand environment variables in the path
+        expanded_dir = os.path.expandvars(env_dir)
+        path = Path(expanded_dir)
+        # Create parent directories if needed
+        os.makedirs(os.path.dirname(str(path)), exist_ok=True)
+        os.makedirs(str(path), exist_ok=True)
         return path
-    
-    # Default to local directory for portability during dev
-    path = get_app_dir() / 'data'
-    path.mkdir(parents=True, exist_ok=True)
+
+    # Default to current working directory (like crm-automator)
+    path = Path(os.getcwd()) / 'data'
+    os.makedirs(str(path), exist_ok=True)
     return path
+
+def get_app_dir():
+    """Returns the root directory of the application for user data."""
+    # Use parent of data directory
+    return get_data_dir().parent
 
 def get_db_path():
     """Returns the path to the SQLite database."""
@@ -34,9 +41,6 @@ def get_config_path():
     return get_app_dir() / 'config' / 'settings.yaml'
 
 def get_locales_path():
-    """Returns the path to the locales directory."""
-    # Assuming locales is inside the package (i.e. sibling to core, ui, etc.)
-    # We are in core/paths.py, so parent is rt_commission_dashboard
-    # Actually get_app_dir usually points to root of project (d:\RTA\GitHub\rt-commission-dashboard)
-    # The new folder was created at d:\RTA\GitHub\rt-commission-dashboard\rt_commission_dashboard\locales
-    return get_app_dir() / 'rt_commission_dashboard' / 'locales'
+    """Returns the path to the locales directory inside the package."""
+    # Locales are part of the installed package
+    return get_package_dir() / 'locales'

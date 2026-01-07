@@ -760,7 +760,7 @@ class DBHandler:
             downline = self.get_downline_flat(user_id)
             results.extend(downline)
             
-        return [dict(u=u['id'], label=f"{u['full_name']} ({u['role']})", role=u['role']) for u in results]
+        return [dict(id=u['id'], label=f"{u['full_name']} ({u['role']})", role=u['role']) for u in results]
 
 
 # ========== Database Factory Pattern ==========

@@ -34,8 +34,5 @@ def login_page():
         # Helper for Phase 1 testing
         with ui.expansion('Dev Hints', icon='code').classes('w-full mt-4 text-gray-500 text-sm'):
             with ui.column().classes('gap-1'):
-                ui.label('Test Accounts:')
+                ui.label('Test Account:')
                 ui.label('admin@rt.local (Admin)')
-                ui.label('daily1@rt.local (Affiliate)')
-                ui.label('ctv1@rt.local (CTV)')
-                ui.label('Pass: admin')
