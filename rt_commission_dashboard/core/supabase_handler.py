@@ -19,10 +19,23 @@ class SupabaseHandler:
         service_key = config.get_supabase_service_key()
 
         if not url or not service_key:
-            raise ValueError(
-                "Missing SUPABASE_URL or SUPABASE_SERVICE_KEY environment variables. "
-                "Please check your .env file."
+            error_msg = (
+                "\n❌ Missing Supabase credentials!\n\n"
+                "To use Supabase, provide credentials in one of these ways:\n\n"
+                "1. Command-line arguments:\n"
+                "   --db-type supabase \\\n"
+                "   --supabase-url https://your-project.supabase.co \\\n"
+                "   --supabase-anon-key your-anon-key \\\n"
+                "   --supabase-service-key your-service-key\n\n"
+                "2. Environment variables:\n"
+                "   SUPABASE_URL=https://your-project.supabase.co\n"
+                "   SUPABASE_ANON_KEY=your-anon-key\n"
+                "   SUPABASE_SERVICE_KEY=your-service-key\n\n"
+                "3. Or use SQLite instead (default):\n"
+                "   --db-type sqlite\n\n"
+                f"Missing: {'SUPABASE_URL' if not url else ''} {'SUPABASE_SERVICE_KEY' if not service_key else ''}"
             )
+            raise ValueError(error_msg)
 
         # Use service key for backend operations (full access)
         self.client: Client = create_client(url, service_key)
