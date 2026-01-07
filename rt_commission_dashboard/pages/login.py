@@ -1,6 +1,6 @@
 from nicegui import ui, app
 from rt_commission_dashboard.ui.theme import Theme
-from rt_commission_dashboard.core.db_handler import DBHandler
+from rt_commission_dashboard.core.db_handler import get_db_handler
 
 def login_page():
     Theme.apply_global_styles()
@@ -17,7 +17,7 @@ def login_page():
             password = ui.input('Password').props('outlined dense dark type=password').classes('w-full mb-6')
             
             def handle_login():
-                db = DBHandler()
+                db = get_db_handler()
                 user = db.get_user(email.value)
                 
                 # Phase 1: Any password works if email exists

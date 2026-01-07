@@ -1,7 +1,7 @@
 from nicegui import ui, app
 from rt_commission_dashboard.ui.theme import Theme
 from rt_commission_dashboard.ui.layout import layout
-from rt_commission_dashboard.core.db_handler import DBHandler
+from rt_commission_dashboard.core.db_handler import get_db_handler
 import pandas as pd
 
 from rt_commission_dashboard.core.i18n import t
@@ -10,7 +10,7 @@ from rt_commission_dashboard.core.currency import format_currency
 @layout
 def reports_page():
     user = app.storage.user.get('user_info', {})
-    db = DBHandler()
+    db = get_db_handler()
     
     # Title
     with ui.row().classes('items-center mb-6'):
@@ -28,7 +28,7 @@ def reports_page():
         
         # User Filter (Admin or Parent)
         viewable_users = db.get_viewable_users(user['id'], user.get('role', 'ctv'))
-        user_options = {u['u']: u['label'] for u in viewable_users}
+        user_options = {u['id']: u['label'] for u in viewable_users}
         target_user_id = user['id'] # Default
         user_select = None
         
@@ -96,7 +96,16 @@ def reports_page():
             for row in rows:
                 row_dict = dict(row)
                 row_dict['amount'] = format_currency(row_dict['amount'])
-                row_dict['type'] = row_dict['type'].replace('_', ' ').title()
+                
+                # Custom Type Display
+                display_type = row_dict['type'].replace('_', ' ').title()
+                if row_dict.get('shared_with_id'):
+                    if row_dict.get('shared_with_id') == filter_user_id:
+                        display_type = "Shared (Received)"
+                    elif row_dict.get('user_id') == filter_user_id:
+                        display_type = f"Shared (Given)"
+                
+                row_dict['type'] = display_type
                 
                 # Format Date
                 try:

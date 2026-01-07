@@ -1,12 +1,17 @@
 """
 Configuration management for RT Commission Dashboard.
 Loads settings from config.yaml and provides centralized access.
+Also loads environment variables from .env file for Supabase credentials.
 """
 
 import os
 import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 class Config:
     _instance: Optional['Config'] = None
@@ -167,6 +172,45 @@ class Config:
     def get_role_label(self, role: str) -> str:
         """Get display label for a specific role."""
         return self.get(f'roles.{role}.label', role.title())
+
+    # ========== Environment Variable Methods (for Supabase) ==========
+
+    def get_database_type(self) -> str:
+        """Get database type from environment variable or config."""
+        # First check environment variable
+        db_type = os.getenv('DATABASE_TYPE')
+        if db_type:
+            return db_type.lower()
+        # Fall back to config.yaml
+        return self.get('database.type', 'sqlite').lower()
+
+    def get_supabase_url(self) -> str:
+        """Get Supabase URL from environment variable."""
+        url = os.getenv('SUPABASE_URL')
+        if not url:
+            # Try config.yaml as fallback
+            url = self.get('database.supabase.url', '')
+        return url
+
+    def get_supabase_anon_key(self) -> str:
+        """Get Supabase anon key from environment variable."""
+        key = os.getenv('SUPABASE_ANON_KEY')
+        if not key:
+            # Try config.yaml as fallback
+            key = self.get('database.supabase.anon_key', '')
+        return key
+
+    def get_supabase_service_key(self) -> str:
+        """Get Supabase service key from environment variable."""
+        key = os.getenv('SUPABASE_SERVICE_KEY')
+        if not key:
+            # Try config.yaml as fallback
+            key = self.get('database.supabase.service_key', '')
+        return key
+
+    def get_environment(self) -> str:
+        """Get environment (development/production) from environment variable."""
+        return os.getenv('ENVIRONMENT', 'development').lower()
 
 
 # Global config instance

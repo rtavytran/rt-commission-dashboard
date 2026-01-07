@@ -1,12 +1,12 @@
 from nicegui import ui, app
 from rt_commission_dashboard.ui.theme import Theme
 from rt_commission_dashboard.ui.layout import layout
-from rt_commission_dashboard.core.db_handler import DBHandler
+from rt_commission_dashboard.core.db_handler import get_db_handler
 from rt_commission_dashboard.core.i18n import t
 
 @layout
 def users_page():
-    db = DBHandler()
+    db = get_db_handler()
     
     # Title
     with ui.row().classes('items-center mb-6'):

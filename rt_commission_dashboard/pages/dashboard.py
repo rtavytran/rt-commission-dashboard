@@ -1,14 +1,14 @@
 from nicegui import ui, app
 from rt_commission_dashboard.ui.theme import Theme
 from rt_commission_dashboard.ui.layout import layout
-from rt_commission_dashboard.core.db_handler import DBHandler
+from rt_commission_dashboard.core.db_handler import get_db_handler
 from rt_commission_dashboard.core.i18n import t
 from rt_commission_dashboard.core.currency import format_currency
 
 @layout
 def dashboard_page():
     user = app.storage.user.get('user_info', {})
-    db = DBHandler()
+    db = get_db_handler()
     
     # ... (Title omitted for brevity if unchanged, but I need to make sure import works)
     
@@ -26,7 +26,7 @@ def dashboard_page():
     viewable_users = db.get_viewable_users(user['id'], user.get('role', 'ctv'))
     
     # Options construction
-    user_options = {u['u']: u['label'] for u in viewable_users}
+    user_options = {u['id']: u['label'] for u in viewable_users}
     is_admin = user.get('role') == 'admin'
     if is_admin:
         user_options = {'global': f"Global Stats (Admin)", **user_options}
@@ -38,13 +38,8 @@ def dashboard_page():
     @ui.refreshable
     def render_dashboard_content(target_id, month, year):
         # Fetch Data
-        if target_id == 'global' and is_admin:
-            kpis = db.get_global_stats(month=month, year=year)
-            # Chart now respects Year filter
-            monthly_data = db.get_global_monthly_sales(year=year) 
-        else:
-            kpis = db.get_kpi_stats(target_id, month=month, year=year)
-            monthly_data = db.get_monthly_sales(target_id, year=year)
+        kpis = db.get_kpi_stats(target_id, month=month, year=year)
+        monthly_data = db.get_monthly_sales(target_id, year=year)
             
         # --- KPI Cards ---
         with ui.row().classes('w-full gap-4'):

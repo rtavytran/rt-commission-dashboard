@@ -69,8 +69,11 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.bak
-evaluation_report.md
-test_scenario.md
+
+# Development scripts and docs (not part of package)
+scripts/
+tests/
+docs/
 
 # Environment variables (keep .env.example)
 .env

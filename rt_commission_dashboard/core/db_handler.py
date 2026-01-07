@@ -761,3 +761,20 @@ class DBHandler:
             results.extend(downline)
             
         return [dict(u=u['id'], label=f"{u['full_name']} ({u['role']})", role=u['role']) for u in results]
+
+
+# ========== Database Factory Pattern ==========
+
+def get_db_handler():
+    """Factory function to return appropriate DB handler based on configuration."""
+    from rt_commission_dashboard.core.config import config
+
+    db_type = config.get_database_type()
+
+    if db_type == 'supabase':
+        from rt_commission_dashboard.core.supabase_handler import SupabaseHandler
+        logging.info("Using Supabase database backend")
+        return SupabaseHandler()
+    else:
+        logging.info("Using SQLite database backend")
+        return DBHandler()
