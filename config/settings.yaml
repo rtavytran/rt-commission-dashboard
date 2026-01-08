@@ -3,12 +3,12 @@ workspace:
   company: Nagen
   domain: rt.local
 database:
-  type: supabase
+  type: sqlite
   filename: rt_commission_dashboard_v2.db
   supabase:
-    url: 
-    anon_key: 
-    service_key: 
+    url: ""
+    anon_key: ""
+    service_key: ""
 commission:
   tiers:
   - threshold: 0

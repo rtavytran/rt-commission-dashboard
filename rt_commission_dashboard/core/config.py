@@ -6,6 +6,7 @@ Also loads environment variables from .env file for Supabase credentials.
 
 import os
 import yaml
+import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
@@ -196,9 +197,27 @@ class Config:
         # First check environment variable
         db_type = os.getenv('DATABASE_TYPE')
         if db_type:
-            return db_type.lower()
-        # Fall back to config.yaml
-        return self.get('database.type', 'sqlite').lower()
+            db_type = db_type.lower()
+        else:
+            # Fall back to config.yaml/settings.yaml
+            db_type = self.get('database.type', 'sqlite').lower()
+
+        if db_type == 'supabase':
+            # Verify credentials are present; otherwise fall back to sqlite
+            url = self.get_supabase_url()
+            anon = self.get_supabase_anon_key()
+            service = self.get_supabase_service_key()
+            missing = [name for name, value in [
+                ('SUPABASE_URL', url),
+                ('SUPABASE_ANON_KEY', anon),
+                ('SUPABASE_SERVICE_KEY', service),
+            ] if not value]
+
+            if missing:
+                logging.warning(f"Supabase selected but missing credentials ({', '.join(missing)}); using SQLite until configured.")
+                return 'sqlite'
+
+        return db_type
 
     def get_supabase_url(self) -> str:
         """Get Supabase URL from environment variable."""

@@ -75,6 +75,9 @@ Thumbs.db
 scripts/
 tests/
 
+# Local env backups
+.env.backup
+
 # Environment variables (keep .env.example)
 .env
 !.env.example
