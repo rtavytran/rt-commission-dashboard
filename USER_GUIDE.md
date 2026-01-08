@@ -21,12 +21,15 @@ After logging in, you will see the main dashboard. This page provides a high-lev
 ### Key Metrics
 *   **Tổng Doanh Thu (Total Revenue)**: The total value of all approved retail sales.
 *   **Tổng Hoa Hồng (Total Commission)**: Your total earnings from all sources (Direct, Shared, Network).
+*   **Shared-Out / Shared-Received**: Retail sales you shared with others vs. retail sales you received from others.
+*   **Ranking Volume & Tier Rate**: Volume used for your commission tier and the applied rate.
+*   **Hoa Hồng Override**: Differential commission earned from your direct downline.
 *   **Khách Hàng Mới (New Customers)**: Number of new customers acquired in the selected period.
 *   **Quy Mô Hệ Thống (System Scale)**: Total number of agents and collaborators in your downline.
 
 ### Filters
 *   **Year/Month**: Use the dropdowns at the top to filter data by specific time periods.
-*   **User Selector**: (For Admins/Leaders) Select a specific team member to view their individual performance.
+*   **User Selector**: (For Admins/Leaders) Sorted, searchable list to view a specific team member (or Global for admin).
 
 ## 3. Managing Agents (Đại Lý)
 

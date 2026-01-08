@@ -435,10 +435,17 @@ class DBHandler:
                 date_filter += " AND strftime('%m', created_at) = ?"
                 params_dates.append(f"{int(month):02d}")
             
-            # 1. Revenue (Retail Sales)
-            query_rev = f"SELECT SUM(amount) FROM transactions WHERE user_id = ? AND type = 'retail_sales' AND status = 'approved' {date_filter}"
-            cursor.execute(query_rev, (user_id, *params_dates))
-            revenue = cursor.fetchone()[0] or 0.0
+        # 1. Revenue (Retail Sales)
+        query_rev = f"SELECT SUM(amount) FROM transactions WHERE user_id = ? AND type = 'retail_sales' AND status = 'approved' {date_filter}"
+        cursor.execute(query_rev, (user_id, *params_dates))
+        revenue = cursor.fetchone()[0] or 0.0
+        # 1b. Shared volumes (for clarity)
+        # Shared-out: I'm sharer (shared_with_id = me)
+        cursor.execute(f"SELECT SUM(amount) FROM transactions WHERE shared_with_id = ? AND type = 'retail_sales' AND status = 'approved' {date_filter}", (user_id, *params_dates))
+        shared_out_amount = cursor.fetchone()[0] or 0.0
+        # Shared-received: I'm receiver (user_id = me, shared_with_id exists)
+        cursor.execute(f"SELECT SUM(amount) FROM transactions WHERE user_id = ? AND shared_with_id IS NOT NULL AND type = 'retail_sales' AND status = 'approved' {date_filter}", (user_id, *params_dates))
+        shared_received_amount = cursor.fetchone()[0] or 0.0
             
             # 2. Commission (From monthly_stats where month column is YYYY-MM)
             comm_where = "WHERE user_id = ?"
@@ -490,12 +497,16 @@ class DBHandler:
             
             return {
                 'revenue': revenue,
+                'shared_out_amount': shared_out_amount,
+                'shared_received_amount': shared_received_amount,
                 'commission': total_comm + kpi_reward, 
                 'commission_share': total_comm,
                 'comm_direct': c_direct,
                 'comm_shared': c_shared,
                 'comm_received': c_received,
                 'comm_override': c_override,
+                'tier_rate': tier_rate,
+                'ranking_volume': total_ranking_vol,
                 'kpi_reward': kpi_reward,
                 'new_customers': new_customers,
                 'network_size': network_size

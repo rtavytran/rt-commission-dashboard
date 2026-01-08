@@ -26,8 +26,8 @@ def reports_page():
         current_year = datetime.now().year
         
         
-        # User Filter (Admin or Parent)
-        viewable_users = db.get_viewable_users(user['id'], user.get('role', 'ctv'))
+        # User Filter (Admin or Parent), sorted by label
+        viewable_users = sorted(db.get_viewable_users(user['id'], user.get('role', 'ctv')), key=lambda u: u['label'].lower())
         user_options = {u['id']: u['label'] for u in viewable_users}
         target_user_id = user['id'] # Default
         user_select = None
@@ -44,7 +44,7 @@ def reports_page():
                     options=user_options,
                     value=default_val,
                     label=t('nav.users')
-                ).classes('w-64 rt-input').props('outlined dense use-input filter')
+                ).classes('w-72 rt-input').props('outlined dense use-input fill-input input-debounce=0 filter clearable popup-content-class=rt-input')
 
             year_select = ui.select(
                 options=[str(y) for y in range(current_year, current_year-5, -1)],

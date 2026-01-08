@@ -21,11 +21,8 @@ def dashboard_page():
     from datetime import datetime
     current_year = datetime.now().year
     
-    # Get viewable users (Self + Downline, or All if Admin)
-    # Filterable View: Only show if there are options other than self, OR if user wants to see time filters
-    viewable_users = db.get_viewable_users(user['id'], user.get('role', 'ctv'))
-    
-    # Options construction
+    # Get viewable users (Self + Downline, or All if Admin), sorted by label
+    viewable_users = sorted(db.get_viewable_users(user['id'], user.get('role', 'ctv')), key=lambda u: u['label'].lower())
     user_options = {u['id']: u['label'] for u in viewable_users}
     is_admin = user.get('role') == 'admin'
     if is_admin:
@@ -47,6 +44,10 @@ def dashboard_page():
             _kpi_card(t('dash.total_commission'), format_currency(kpis['commission']), 'payments', 'blue')
             _kpi_card(t('dash.new_customers'), str(kpis['new_customers']), 'person_add', 'orange')
             _kpi_card(t('dash.network_size'), str(kpis['network_size']), 'hub', 'purple')
+            _kpi_card('Shared-Out Volume', format_currency(kpis.get('shared_out_amount', 0)), 'north_east', 'teal')
+            _kpi_card('Shared-Received Volume', format_currency(kpis.get('shared_received_amount', 0)), 'south_west', 'pink')
+            _kpi_card('Ranking Volume', format_currency(kpis.get('ranking_volume', 0)), 'stacked_line_chart', 'indigo')
+            _kpi_card('Tier Rate', f"{kpis.get('tier_rate', 0)*100:.2f}%", 'trending_up', 'cyan')
 
         # --- Commission Breakdown ---
         ui.label(t('dash.comm_breakdown')).classes('text-lg font-bold mt-6 mb-2 rt-subtitle')
@@ -93,7 +94,7 @@ def dashboard_page():
                     value=default_target,
                     label=t('nav.users'),
                     on_change=lambda: refresh_all()
-                ).classes('w-64 rt-input').props('outlined dense use-input filter')
+                ).classes('w-72 rt-input').props('outlined dense use-input fill-input input-debounce=0 filter clearable popup-content-class=rt-input')
 
         # 2. Year Selector
         year_select = ui.select(
