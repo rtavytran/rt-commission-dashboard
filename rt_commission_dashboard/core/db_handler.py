@@ -435,17 +435,17 @@ class DBHandler:
                 date_filter += " AND strftime('%m', created_at) = ?"
                 params_dates.append(f"{int(month):02d}")
             
-        # 1. Revenue (Retail Sales)
-        query_rev = f"SELECT SUM(amount) FROM transactions WHERE user_id = ? AND type = 'retail_sales' AND status = 'approved' {date_filter}"
-        cursor.execute(query_rev, (user_id, *params_dates))
-        revenue = cursor.fetchone()[0] or 0.0
-        # 1b. Shared volumes (for clarity)
-        # Shared-out: I'm sharer (shared_with_id = me)
-        cursor.execute(f"SELECT SUM(amount) FROM transactions WHERE shared_with_id = ? AND type = 'retail_sales' AND status = 'approved' {date_filter}", (user_id, *params_dates))
-        shared_out_amount = cursor.fetchone()[0] or 0.0
-        # Shared-received: I'm receiver (user_id = me, shared_with_id exists)
-        cursor.execute(f"SELECT SUM(amount) FROM transactions WHERE user_id = ? AND shared_with_id IS NOT NULL AND type = 'retail_sales' AND status = 'approved' {date_filter}", (user_id, *params_dates))
-        shared_received_amount = cursor.fetchone()[0] or 0.0
+            # 1. Revenue (Retail Sales)
+            query_rev = f"SELECT SUM(amount) FROM transactions WHERE user_id = ? AND type = 'retail_sales' AND status = 'approved' {date_filter}"
+            cursor.execute(query_rev, (user_id, *params_dates))
+            revenue = cursor.fetchone()[0] or 0.0
+            # 1b. Shared volumes (for clarity)
+            # Shared-out: I'm sharer (shared_with_id = me)
+            cursor.execute(f"SELECT SUM(amount) FROM transactions WHERE shared_with_id = ? AND type = 'retail_sales' AND status = 'approved' {date_filter}", (user_id, *params_dates))
+            shared_out_amount = cursor.fetchone()[0] or 0.0
+            # Shared-received: I'm receiver (user_id = me, shared_with_id exists)
+            cursor.execute(f"SELECT SUM(amount) FROM transactions WHERE user_id = ? AND shared_with_id IS NOT NULL AND type = 'retail_sales' AND status = 'approved' {date_filter}", (user_id, *params_dates))
+            shared_received_amount = cursor.fetchone()[0] or 0.0
             
             # 2. Commission (From monthly_stats where month column is YYYY-MM)
             comm_where = "WHERE user_id = ?"
