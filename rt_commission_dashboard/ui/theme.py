@@ -205,11 +205,24 @@ class Theme:
             </style>
 
             <script>
-                // Apply theme to body
+                function updateToggleIcon() {
+                    const icon = document.querySelector('.theme-toggle i');
+                    if (!icon) return;
+                    const isDark = document.body.classList.contains('dark');
+                    icon.textContent = isDark ? 'light_mode' : 'dark_mode';
+                }
+
+                // Apply theme to body and html
                 function applyTheme(theme) {
                     document.body.classList.remove('light', 'dark');
                     document.body.classList.add(theme);
+                    document.documentElement.classList.remove('light', 'dark');
+                    document.documentElement.classList.add(theme);
                     localStorage.setItem('theme', theme);
+                    try {
+                        window.parent.postMessage({ type: 'theme-change', theme }, '*');
+                    } catch (e) {}
+                    updateToggleIcon();
                 }
 
                 // Toggle theme
@@ -222,18 +235,32 @@ class Theme:
                 // Initialize theme from localStorage or system preference
                 function initTheme() {
                     const savedTheme = localStorage.getItem('theme');
+                    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
                     if (savedTheme) {
                         applyTheme(savedTheme);
                     } else {
-                        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                        applyTheme(prefersDark ? 'dark' : 'light');
+                        applyTheme(systemTheme);
                     }
+                    // Request theme from parent app (realtimex host)
+                    try {
+                        window.parent.postMessage({ type: 'get-theme' }, '*');
+                    } catch (e) {}
                 }
 
                 // Listen for system theme changes
                 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
                     if (!localStorage.getItem('theme')) {
                         applyTheme(e.matches ? 'dark' : 'light');
+                    }
+                });
+
+                // Listen for parent theme updates (realtimex host)
+                window.addEventListener('message', (event) => {
+                    const data = event.data || {};
+                    if (data.type === 'theme-response' || data.type === 'theme-change') {
+                        if (data.theme === 'dark' || data.theme === 'light') {
+                            applyTheme(data.theme);
+                        }
                     }
                 });
 
