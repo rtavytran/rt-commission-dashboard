@@ -205,31 +205,39 @@ class Theme:
             </style>
 
             <script>
-                function updateToggleIcon() {
+                let currentTheme = null;
+
+                function updateToggleIcon(theme) {
                     const icon = document.querySelector('.theme-toggle i');
                     if (!icon) return;
-                    const isDark = document.body.classList.contains('dark');
+                    const isDark = (theme === 'dark') || document.body.classList.contains('dark');
                     icon.textContent = isDark ? 'light_mode' : 'dark_mode';
                 }
 
                 // Apply theme to body and html
-                function applyTheme(theme) {
+                function applyTheme(theme, { broadcast = false, persist = true } = {}) {
+                    if (theme !== 'dark' && theme !== 'light') return;
+                    currentTheme = theme;
                     document.body.classList.remove('light', 'dark');
                     document.body.classList.add(theme);
                     document.documentElement.classList.remove('light', 'dark');
                     document.documentElement.classList.add(theme);
-                    localStorage.setItem('theme', theme);
-                    try {
-                        window.parent.postMessage({ type: 'theme-change', theme }, '*');
-                    } catch (e) {}
-                    updateToggleIcon();
+                    if (persist) {
+                        localStorage.setItem('theme', theme);
+                    }
+                    if (broadcast) {
+                        try {
+                            window.parent.postMessage({ type: 'theme-change', theme }, '*');
+                        } catch (e) {}
+                    }
+                    updateToggleIcon(theme);
                 }
 
-                // Toggle theme
+                // Toggle theme (local action, broadcast to parent)
                 function toggleTheme() {
                     const currentTheme = document.body.classList.contains('dark') ? 'dark' : 'light';
                     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                    applyTheme(newTheme);
+                    applyTheme(newTheme, { broadcast: true, persist: true });
                 }
 
                 // Initialize theme from localStorage or system preference
@@ -237,9 +245,9 @@ class Theme:
                     const savedTheme = localStorage.getItem('theme');
                     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
                     if (savedTheme) {
-                        applyTheme(savedTheme);
+                        applyTheme(savedTheme, { broadcast: false, persist: true });
                     } else {
-                        applyTheme(systemTheme);
+                        applyTheme(systemTheme, { broadcast: false, persist: false });
                     }
                     // Request theme from parent app (realtimex host)
                     try {
@@ -250,7 +258,7 @@ class Theme:
                 // Listen for system theme changes
                 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
                     if (!localStorage.getItem('theme')) {
-                        applyTheme(e.matches ? 'dark' : 'light');
+                        applyTheme(e.matches ? 'dark' : 'light', { broadcast: false, persist: false });
                     }
                 });
 
@@ -259,10 +267,18 @@ class Theme:
                     const data = event.data || {};
                     if (data.type === 'theme-response' || data.type === 'theme-change') {
                         if (data.theme === 'dark' || data.theme === 'light') {
-                            applyTheme(data.theme);
+                            applyTheme(data.theme, { broadcast: false, persist: false });
                         }
                     }
                 });
+
+                // Fallback after 100ms if no theme applied yet
+                setTimeout(() => {
+                    if (!document.body.classList.contains('light') && !document.body.classList.contains('dark')) {
+                        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                        applyTheme(systemTheme, { broadcast: false, persist: false });
+                    }
+                }, 100);
 
                 // Initialize on load
                 if (document.readyState === 'loading') {
