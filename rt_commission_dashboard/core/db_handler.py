@@ -495,6 +495,54 @@ class DBHandler:
             # 5. Network Size (Snapshot - always total)
             network_size = len(self.get_downline_flat(user_id))
             
+            # --- Fallbacks for ranking/tier if monthly_stats missing (e.g., Supabase not precomputed) ---
+            def _compute_ranking_fallback(target_id):
+                # Personal + shared-out volumes for target_id
+                cursor.execute(f"""
+                    SELECT amount, user_id, shared_with_id 
+                    FROM transactions 
+                    WHERE (user_id = ? OR shared_with_id = ?)
+                    AND type = 'retail_sales' AND status = 'approved'
+                    {date_filter}
+                """, (target_id, target_id, *params_dates))
+                rows = cursor.fetchall()
+                personal_ranking_vol = 0.0
+                shared_out_vol = 0.0
+                for amt, tx_user, tx_shared in rows:
+                    if tx_user == target_id:
+                        if tx_shared is None:
+                            personal_ranking_vol += amt
+                        else:
+                            # received, does not count to ranking
+                            pass
+                    elif tx_shared == target_id:
+                        # sharer
+                        personal_ranking_vol += amt
+                        shared_out_vol += amt
+                # F1 ranking volume: direct children personal+shared_out
+                cursor.execute("SELECT id FROM users WHERE parent_id = ?", (target_id,))
+                f1_ids = [r[0] for r in cursor.fetchall()]
+                f1_ranking_vol = 0.0
+                if f1_ids:
+                    placeholders = ','.join('?' * len(f1_ids))
+                    cursor.execute(f"""
+                        SELECT amount, user_id, shared_with_id 
+                        FROM transactions 
+                        WHERE (user_id IN ({placeholders}) OR shared_with_id IN ({placeholders}))
+                        AND type = 'retail_sales' AND status = 'approved' {date_filter}
+                    """, (*f1_ids, *f1_ids, *params_dates))
+                    for amt, tx_user, tx_shared in cursor.fetchall():
+                        if tx_user in f1_ids and tx_shared is None:
+                            f1_ranking_vol += amt
+                        elif tx_shared in f1_ids:
+                            f1_ranking_vol += amt
+                return personal_ranking_vol + f1_ranking_vol
+
+            total_ranking_vol_fallback = _compute_ranking_fallback(user_id)
+            if total_ranking_vol == 0:
+                total_ranking_vol = total_ranking_vol_fallback
+                tier_rate = self._calculate_tier_rate(cursor, user_id, total_ranking_vol)
+
             return {
                 'revenue': revenue,
                 'shared_out_amount': shared_out_amount,
