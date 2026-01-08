@@ -38,24 +38,26 @@ def dashboard_page():
         kpis = db.get_kpi_stats(target_id, month=month, year=year)
         monthly_data = db.get_monthly_sales(target_id, year=year)
             
-        # --- KPI Cards ---
+    # --- KPI Cards ---
+    with ui.column().classes('w-full gap-3'):
         with ui.row().classes('w-full gap-4'):
             _kpi_card(t('dash.total_revenue'), format_currency(kpis['revenue']), 'attach_money', 'green')
             _kpi_card(t('dash.total_commission'), format_currency(kpis['commission']), 'payments', 'blue')
             _kpi_card(t('dash.new_customers'), str(kpis['new_customers']), 'person_add', 'orange')
             _kpi_card(t('dash.network_size'), str(kpis['network_size']), 'hub', 'purple')
-            _kpi_card('Shared-Out Volume', format_currency(kpis.get('shared_out_amount', 0)), 'north_east', 'teal')
-            _kpi_card('Shared-Received Volume', format_currency(kpis.get('shared_received_amount', 0)), 'south_west', 'pink')
+        with ui.row().classes('w-full gap-4'):
             _kpi_card('Ranking Volume', format_currency(kpis.get('ranking_volume', 0)), 'stacked_line_chart', 'indigo')
             _kpi_card('Tier Rate', f"{kpis.get('tier_rate', 0)*100:.2f}%", 'trending_up', 'cyan')
+            _kpi_card('Shared-Out Volume', format_currency(kpis.get('shared_out_amount', 0)), 'north_east', 'teal')
+            _kpi_card('Shared-Received Volume', format_currency(kpis.get('shared_received_amount', 0)), 'south_west', 'pink')
 
         # --- Commission Breakdown ---
         ui.label(t('dash.comm_breakdown')).classes('text-lg font-bold mt-6 mb-2 rt-subtitle')
         with ui.row().classes('w-full gap-4'):
             _kpi_card(t('dash.comm_direct'), format_currency(kpis['comm_direct']), 'store', 'teal')
+            _kpi_card(t('dash.comm_override'), format_currency(kpis['comm_override']), 'group_work', 'pink')
             _kpi_card(t('dash.comm_shared'), format_currency(kpis['comm_shared']), 'share', 'cyan')
             _kpi_card(t('dash.comm_received'), format_currency(kpis['comm_received']), 'move_to_inbox', 'indigo')
-            _kpi_card(t('dash.comm_override'), format_currency(kpis['comm_override']), 'group_work', 'pink')
 
         # --- Charts ---
         months = [row[0] for row in monthly_data]
@@ -94,7 +96,7 @@ def dashboard_page():
                     value=default_target,
                     label=t('nav.users'),
                     on_change=lambda: refresh_all()
-                ).classes('w-72 rt-input').props('outlined dense use-input fill-input input-debounce=0 filter clearable popup-content-class=rt-input')
+                ).classes('w-72 rt-input').props('outlined dense use-input fill-input input-debounce=0 filter clearable popup-content-class=rt-input behavior=menu')
 
         # 2. Year Selector
         year_select = ui.select(
@@ -102,7 +104,7 @@ def dashboard_page():
             value=str(current_year),
             label=t('rep.year'),
             on_change=lambda: refresh_all()
-        ).classes('w-32 rt-input').props('outlined dense')
+        ).classes('w-32 rt-input').props('outlined dense popup-content-class=rt-input behavior=menu')
 
         # 3. Month Selector
         month_select = ui.select(
@@ -110,7 +112,7 @@ def dashboard_page():
             value=None,
             label=t('rep.month'),
             on_change=lambda: refresh_all()
-        ).classes('w-40 rt-input').props('outlined dense clearable')
+        ).classes('w-44 rt-input').props('outlined dense clearable popup-content-class=rt-input behavior=menu')
         
         def refresh_all():
             t_id = target_select.value if target_select else default_target

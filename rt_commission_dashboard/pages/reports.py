@@ -44,25 +44,25 @@ def reports_page():
                     options=user_options,
                     value=default_val,
                     label=t('nav.users')
-                ).classes('w-72 rt-input').props('outlined dense use-input fill-input input-debounce=0 filter clearable popup-content-class=rt-input')
+                ).classes('w-72 rt-input').props('outlined dense use-input fill-input input-debounce=0 filter clearable popup-content-class=rt-input behavior=menu')
 
             year_select = ui.select(
                 options=[str(y) for y in range(current_year, current_year-5, -1)],
                 value=str(current_year),
                 label=t('rep.year')
-            ).classes('w-32 rt-input').props('outlined dense')
+            ).classes('w-32 rt-input').props('outlined dense popup-content-class=rt-input behavior=menu')
 
             month_select = ui.select(
                 options={f"{m:02d}": datetime(2000, m, 1).strftime('%B') for m in range(1, 13)},
                 value=None,
                 label=t('rep.month')
-            ).classes('w-40 rt-input').props('outlined dense clearable')
+            ).classes('w-44 rt-input').props('outlined dense clearable popup-content-class=rt-input behavior=menu')
 
             type_select = ui.select(
                 options=['All', 'Retail', 'Share', 'Reward'],
                 value='All',
                 label=t('rep.type')
-            ).classes('w-40 rt-input').props('outlined dense')
+            ).classes('w-40 rt-input').props('outlined dense popup-content-class=rt-input behavior=menu')
 
             ui.button(t('rep.apply'), on_click=lambda: update_table()).classes('h-10').props('unelevated color=indigo-600')
 
