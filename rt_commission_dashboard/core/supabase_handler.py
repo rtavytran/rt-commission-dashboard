@@ -4,6 +4,7 @@ Implements the same interface as DBHandler but uses Supabase (PostgreSQL) backen
 """
 
 import logging
+import json
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from supabase import create_client, Client
@@ -861,3 +862,186 @@ class SupabaseHandler:
             results.extend(downline)
 
         return [dict(id=u['id'], label=f"{u['full_name']} ({u['role']})", role=u['role']) for u in results]
+
+    # --- KPI helpers ---
+    def _filter_month_year(self, rows, month=None, year=None, date_key='created_at'):
+        if not month and not year:
+            return rows
+        out = []
+        for r in rows:
+            dt = r.get(date_key)
+            if not dt:
+                continue
+            if isinstance(dt, str):
+                if year and month:
+                    if not dt.startswith(f"{year}-{int(month):02d}"):
+                        continue
+                elif year:
+                    if not dt.startswith(f"{year}-"):
+                        continue
+            out.append(r)
+        return out
+
+    def _sum_field(self, rows, field):
+        return sum(float(r.get(field) or 0) for r in rows)
+
+    def get_kpi_stats(self, user_id: str, month: Optional[int] = None, year: Optional[int] = None) -> Dict:
+        month_val = str(month) if month else None
+        year_val = str(year) if year else None
+        # Transactions for revenue/shared
+        tx_query = self.client.table('transactions').select('*').eq('type', 'retail_sales').eq('status', 'approved')\
+            .or_(f"user_id.eq.{user_id},shared_with_id.eq.{user_id}")
+        tx_rows = tx_query.execute().data or []
+        tx_rows = self._filter_month_year(tx_rows, month_val, year_val)
+
+        revenue = sum(t.get('amount') or 0 for t in tx_rows if t.get('user_id') == user_id)
+        shared_out_amount = sum(t.get('amount') or 0 for t in tx_rows if t.get('shared_with_id') == user_id)
+        shared_received_amount = sum(t.get('amount') or 0 for t in tx_rows if t.get('user_id') == user_id and t.get('shared_with_id'))
+
+        # monthly_stats for commissions/tier/ranking
+        ms_query = self.client.table('monthly_stats').select('*').eq('user_id', user_id)
+        if year_val and month_val:
+            ms_query = ms_query.eq('month', f"{year_val}-{int(month_val):02d}")
+        elif year_val:
+            ms_query = ms_query.like('month', f"{year_val}-%")
+        ms_rows = ms_query.execute().data or []
+
+        c_direct = self._sum_field(ms_rows, 'comm_direct')
+        c_shared = self._sum_field(ms_rows, 'comm_shared')
+        c_received = self._sum_field(ms_rows, 'comm_received')
+        c_override = self._sum_field(ms_rows, 'comm_override')
+        total_comm = self._sum_field(ms_rows, 'total_commission')
+        ranking_volume = self._sum_field(ms_rows, 'personal_sales_volume') + self._sum_field(ms_rows, 'shared_out_volume') + self._sum_field(ms_rows, 'f1_sales_volume')
+        tier_rate = max((float(r.get('tier_rate') or 0) for r in ms_rows), default=0.0)
+
+        # KPI rewards
+        kpi_tx = [t for t in tx_rows if t.get('type') == 'kpi_reward' and t.get('status') in ('approved', 'paid')]
+        kpi_reward = sum(t.get('amount') or 0 for t in kpi_tx)
+
+        # New customers: metadata contains 'customer'
+        new_customers = 0
+        for t in tx_rows:
+            meta = t.get('metadata') or {}
+            if isinstance(meta, str):
+                try:
+                    meta = json.loads(meta)
+                except Exception:
+                    meta = {}
+            if isinstance(meta, dict) and 'customer' in meta:
+                new_customers += 1
+
+        network_size = len(self.get_downline_flat(user_id))
+
+        return {
+            'revenue': revenue,
+            'shared_out_amount': shared_out_amount,
+            'shared_received_amount': shared_received_amount,
+            'commission': total_comm + kpi_reward,
+            'commission_share': total_comm,
+            'comm_direct': c_direct,
+            'comm_shared': c_shared,
+            'comm_received': c_received,
+            'comm_override': c_override,
+            'tier_rate': tier_rate,
+            'ranking_volume': ranking_volume,
+            'kpi_reward': kpi_reward,
+            'new_customers': new_customers,
+            'network_size': network_size
+        }
+
+    def get_global_stats(self, month: Optional[int] = None, year: Optional[int] = None) -> Dict:
+        month_val = str(month) if month else None
+        year_val = str(year) if year else None
+
+        tx_query = self.client.table('transactions').select('*').eq('type', 'retail_sales').eq('status', 'approved')
+        tx_rows = self._filter_month_year(tx_query.execute().data or [], month_val, year_val)
+        revenue = sum(t.get('amount') or 0 for t in tx_rows)
+        shared_out_amount = sum(t.get('amount') or 0 for t in tx_rows if t.get('shared_with_id'))
+        shared_received_amount = shared_out_amount
+
+        ms_query = self.client.table('monthly_stats').select('*')
+        if year_val and month_val:
+            ms_query = ms_query.eq('month', f"{year_val}-{int(month_val):02d}")
+        elif year_val:
+            ms_query = ms_query.like('month', f"{year_val}-%")
+        ms_rows = ms_query.execute().data or []
+
+        def ms_sum(field):
+            return sum(float(r.get(field) or 0) for r in ms_rows)
+
+        c_direct = ms_sum('comm_direct')
+        c_shared = ms_sum('comm_shared')
+        c_received = ms_sum('comm_received')
+        c_override = ms_sum('comm_override')
+        total_comm = ms_sum('total_commission')
+        ranking_volume = ms_sum('personal_sales_volume') + ms_sum('shared_out_volume') + ms_sum('f1_sales_volume')
+        tier_rate = max((float(r.get('tier_rate') or 0) for r in ms_rows), default=0.0)
+
+        kpi_tx = [t for t in tx_rows if t.get('type') == 'kpi_reward' and t.get('status') in ('approved', 'paid')]
+        kpi_reward = sum(t.get('amount') or 0 for t in kpi_tx)
+
+        new_customers = 0
+        for t in tx_rows:
+            meta = t.get('metadata') or {}
+            if isinstance(meta, str):
+                try:
+                    meta = json.loads(meta)
+                except Exception:
+                    meta = {}
+            if isinstance(meta, dict) and 'customer' in meta:
+                new_customers += 1
+
+        users_count = self.client.table('users').select('id', count='exact', head=True).execute().count or 0
+
+        return {
+            'revenue': revenue,
+            'shared_out_amount': shared_out_amount,
+            'shared_received_amount': shared_received_amount,
+            'commission': total_comm + kpi_reward,
+            'commission_share': total_comm,
+            'comm_direct': c_direct,
+            'comm_shared': c_shared,
+            'comm_received': c_received,
+            'comm_override': c_override,
+            'ranking_volume': ranking_volume,
+            'tier_rate': tier_rate,
+            'kpi_reward': kpi_reward,
+            'new_customers': new_customers,
+            'network_size': users_count
+        }
+
+    def get_monthly_sales(self, user_id: str, year: Optional[int] = None) -> List[tuple]:
+        """Aggregates approved retail sales by month for a user."""
+        if user_id == 'global':
+            return self.get_global_monthly_sales(year)
+
+        query = self.client.table('transactions')\
+            .select('amount, created_at')\
+            .eq('user_id', user_id)\
+            .eq('type', 'retail_sales')\
+            .eq('status', 'approved')
+        txs = query.execute().data or []
+        if year:
+            txs = [tx for tx in txs if tx.get('created_at', '').startswith(f"{year}-")]
+
+        from collections import defaultdict
+        monthly = defaultdict(float)
+        for tx in txs:
+            month = tx.get('created_at', '')[:7]
+            monthly[month] += tx.get('amount') or 0
+        return sorted(monthly.items(), key=lambda x: x[0])
+
+    def get_global_monthly_sales(self, year: Optional[int] = None) -> List[tuple]:
+        query = self.client.table('transactions')\
+            .select('amount, created_at')\
+            .eq('type', 'retail_sales')\
+            .eq('status', 'approved')
+        txs = query.execute().data or []
+        if year:
+            txs = [tx for tx in txs if tx.get('created_at', '').startswith(f"{year}-")]
+        from collections import defaultdict
+        monthly = defaultdict(float)
+        for tx in txs:
+            month = tx.get('created_at', '')[:7]
+            monthly[month] += tx.get('amount') or 0
+        return sorted(monthly.items(), key=lambda x: x[0])
