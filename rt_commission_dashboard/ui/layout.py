@@ -53,7 +53,7 @@ def layout(content_func):
 
         # If not configured, redirect to setup
         if not db_configured:
-            ui.open('/setup')
+            ui.navigate.to('/setup')
             return
 
         # Auto-authenticate as admin (skip login)
