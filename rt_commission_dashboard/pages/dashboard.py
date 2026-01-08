@@ -38,51 +38,51 @@ def dashboard_page():
         kpis = db.get_kpi_stats(target_id, month=month, year=year)
         monthly_data = db.get_monthly_sales(target_id, year=year)
             
-    # --- KPI Cards ---
-    with ui.column().classes('w-full gap-3'):
-        with ui.row().classes('w-full gap-4'):
-            _kpi_card(t('dash.total_revenue'), format_currency(kpis['revenue']), 'attach_money', 'green')
-            _kpi_card(t('dash.total_commission'), format_currency(kpis['commission']), 'payments', 'blue')
-            _kpi_card(t('dash.new_customers'), str(kpis['new_customers']), 'person_add', 'orange')
-            _kpi_card(t('dash.network_size'), str(kpis['network_size']), 'hub', 'purple')
-        with ui.row().classes('w-full gap-4'):
-            _kpi_card('Ranking Volume', format_currency(kpis.get('ranking_volume', 0)), 'stacked_line_chart', 'indigo')
-            _kpi_card('Tier Rate', f"{kpis.get('tier_rate', 0)*100:.2f}%", 'trending_up', 'cyan')
-            _kpi_card('Shared-Out Volume', format_currency(kpis.get('shared_out_amount', 0)), 'north_east', 'teal')
-            _kpi_card('Shared-Received Volume', format_currency(kpis.get('shared_received_amount', 0)), 'south_west', 'pink')
+        # --- KPI Cards ---
+        with ui.column().classes('w-full gap-3'):
+            with ui.row().classes('w-full gap-4'):
+                _kpi_card(t('dash.total_revenue'), format_currency(kpis['revenue']), 'attach_money', 'green')
+                _kpi_card(t('dash.total_commission'), format_currency(kpis['commission']), 'payments', 'blue')
+                _kpi_card(t('dash.new_customers'), str(kpis['new_customers']), 'person_add', 'orange')
+                _kpi_card(t('dash.network_size'), str(kpis['network_size']), 'hub', 'purple')
+            with ui.row().classes('w-full gap-4'):
+                _kpi_card('Ranking Volume', format_currency(kpis.get('ranking_volume', 0)), 'stacked_line_chart', 'indigo')
+                _kpi_card('Tier Rate', f"{kpis.get('tier_rate', 0)*100:.2f}%", 'trending_up', 'cyan')
+                _kpi_card('Shared-Out Volume', format_currency(kpis.get('shared_out_amount', 0)), 'north_east', 'teal')
+                _kpi_card('Shared-Received Volume', format_currency(kpis.get('shared_received_amount', 0)), 'south_west', 'pink')
 
-        # --- Commission Breakdown ---
-        ui.label(t('dash.comm_breakdown')).classes('text-lg font-bold mt-6 mb-2 rt-subtitle')
-        with ui.row().classes('w-full gap-4'):
-            _kpi_card(t('dash.comm_direct'), format_currency(kpis['comm_direct']), 'store', 'teal')
-            _kpi_card(t('dash.comm_override'), format_currency(kpis['comm_override']), 'group_work', 'pink')
-            _kpi_card(t('dash.comm_shared'), format_currency(kpis['comm_shared']), 'share', 'cyan')
-            _kpi_card(t('dash.comm_received'), format_currency(kpis['comm_received']), 'move_to_inbox', 'indigo')
+            # --- Commission Breakdown ---
+            ui.label(t('dash.comm_breakdown')).classes('text-lg font-bold mt-6 mb-2 rt-subtitle')
+            with ui.row().classes('w-full gap-4'):
+                _kpi_card(t('dash.comm_direct'), format_currency(kpis['comm_direct']), 'store', 'teal')
+                _kpi_card(t('dash.comm_override'), format_currency(kpis['comm_override']), 'group_work', 'pink')
+                _kpi_card(t('dash.comm_shared'), format_currency(kpis['comm_shared']), 'share', 'cyan')
+                _kpi_card(t('dash.comm_received'), format_currency(kpis['comm_received']), 'move_to_inbox', 'indigo')
 
-        # --- Charts ---
-        months = [row[0] for row in monthly_data]
-        sales = [row[1] for row in monthly_data]
-        
-        if not months:
-            months = ['Jan', 'Feb', 'Mar']
-            sales = [0, 0, 0]
+            # --- Charts ---
+            months = [row[0] for row in monthly_data]
+            sales = [row[1] for row in monthly_data]
+            
+            if not months:
+                months = ['Jan', 'Feb', 'Mar']
+                sales = [0, 0, 0]
 
-        with Theme.card().classes('w-full mt-6'):
-            ui.label(t('dash.chart_title')).classes('text-xl font-bold mb-4')
-            ui.plotly({
-                'data': [
-                    {'x': months, 'y': sales, 'type': 'bar', 'name': 'Sales', 'marker': {'color': '#6366f1'}},
-                    {'x': months, 'y': sales, 'type': 'scatter', 'mode': 'lines+markers', 'name': 'Trend', 'line': {'color': '#10b981'}}
-                ],
-                'layout': {
-                    'margin': {'l': 40, 'r': 20, 't': 20, 'b': 40},
-                    'plot_bgcolor': 'rgba(0,0,0,0)',
-                    'paper_bgcolor': 'rgba(0,0,0,0)',
-                    'showlegend': True,
-                    'xaxis': {'showgrid': False, 'type': 'category'},
-                    'yaxis': {'gridcolor': 'rgba(128,128,128,0.2)'}
-                }
-            }).classes('w-full h-80')
+            with Theme.card().classes('w-full mt-6'):
+                ui.label(t('dash.chart_title')).classes('text-xl font-bold mb-4')
+                ui.plotly({
+                    'data': [
+                        {'x': months, 'y': sales, 'type': 'bar', 'name': 'Sales', 'marker': {'color': '#6366f1'}},
+                        {'x': months, 'y': sales, 'type': 'scatter', 'mode': 'lines+markers', 'name': 'Trend', 'line': {'color': '#10b981'}}
+                    ],
+                    'layout': {
+                        'margin': {'l': 40, 'r': 20, 't': 20, 'b': 40},
+                        'plot_bgcolor': 'rgba(0,0,0,0)',
+                        'paper_bgcolor': 'rgba(0,0,0,0)',
+                        'showlegend': True,
+                        'xaxis': {'showgrid': False, 'type': 'category'},
+                        'yaxis': {'gridcolor': 'rgba(128,128,128,0.2)'}
+                    }
+                }).classes('w-full h-80')
 
     # --- Render Filters ---
     with ui.row().classes('mb-4 items-center gap-4'):
