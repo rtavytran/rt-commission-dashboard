@@ -4,17 +4,17 @@ from rt_commission_dashboard.core.db_handler import get_db_handler
 
 def login_page():
     Theme.apply_global_styles()
-    
+
     # Center container
     with ui.column().classes('absolute-center w-full max-w-sm'):
         # Logo/Brand
-        ui.label('RT Commission Dashboard').classes('text-3xl font-bold text-center w-full mb-8 text-indigo-500')
-        
+        ui.label('RT Commission Dashboard').classes('text-3xl font-bold text-center w-full mb-8')
+
         with Theme.card():
             ui.label('Sign In').classes('text-xl font-bold mb-6 text-center w-full')
-            
-            email = ui.input('Email').props('outlined dense dark').classes('w-full mb-4')
-            password = ui.input('Password').props('outlined dense dark type=password').classes('w-full mb-6')
+
+            email = ui.input('Email').props('outlined dense').classes('w-full mb-4 rt-input')
+            password = ui.input('Password').props('outlined dense type=password').classes('w-full mb-6 rt-input')
             
             def handle_login():
                 db = get_db_handler()
@@ -32,7 +32,7 @@ def login_page():
             ui.button('Login', on_click=handle_login).props('unelevated color=indigo-600').classes('w-full h-10')
             
         # Helper for Phase 1 testing
-        with ui.expansion('Dev Hints', icon='code').classes('w-full mt-4 text-gray-500 text-sm'):
+        with ui.expansion('Dev Hints', icon='code').classes('w-full mt-4 rt-muted text-sm'):
             with ui.column().classes('gap-1'):
                 ui.label('Test Account:')
                 ui.label('admin@rt.local (Admin)')

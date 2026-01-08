@@ -49,7 +49,7 @@ def dashboard_page():
             _kpi_card(t('dash.network_size'), str(kpis['network_size']), 'hub', 'purple')
 
         # --- Commission Breakdown ---
-        ui.label(t('dash.comm_breakdown')).classes('text-lg font-bold mt-6 mb-2 text-gray-400')
+        ui.label(t('dash.comm_breakdown')).classes('text-lg font-bold mt-6 mb-2 rt-subtitle')
         with ui.row().classes('w-full gap-4'):
             _kpi_card(t('dash.comm_direct'), format_currency(kpis['comm_direct']), 'store', 'teal')
             _kpi_card(t('dash.comm_shared'), format_currency(kpis['comm_shared']), 'share', 'cyan')
@@ -75,10 +75,9 @@ def dashboard_page():
                     'margin': {'l': 40, 'r': 20, 't': 20, 'b': 40},
                     'plot_bgcolor': 'rgba(0,0,0,0)',
                     'paper_bgcolor': 'rgba(0,0,0,0)',
-                    'font': {'color': '#94a3b8'},
                     'showlegend': True,
                     'xaxis': {'showgrid': False, 'type': 'category'},
-                    'yaxis': {'gridcolor': '#334155'}
+                    'yaxis': {'gridcolor': 'rgba(128,128,128,0.2)'}
                 }
             }).classes('w-full h-80')
 
@@ -90,27 +89,27 @@ def dashboard_page():
         if len(user_options) > 0: # Always >0 (self)
              if len(user_options) > 1 or is_admin:
                 target_select = ui.select(
-                    options=user_options, 
+                    options=user_options,
                     value=default_target,
                     label=t('nav.users'),
                     on_change=lambda: refresh_all()
-                ).classes('w-64').props('outlined dense dark use-input filter')
-        
+                ).classes('w-64 rt-input').props('outlined dense use-input filter')
+
         # 2. Year Selector
         year_select = ui.select(
-            options=[str(y) for y in range(current_year, current_year-5, -1)], 
-            value=str(current_year), 
+            options=[str(y) for y in range(current_year, current_year-5, -1)],
+            value=str(current_year),
             label=t('rep.year'),
             on_change=lambda: refresh_all()
-        ).classes('w-32').props('outlined dense dark')
-        
+        ).classes('w-32 rt-input').props('outlined dense')
+
         # 3. Month Selector
         month_select = ui.select(
-            options={f"{m:02d}": datetime(2000, m, 1).strftime('%B') for m in range(1, 13)}, 
-            value=None, 
+            options={f"{m:02d}": datetime(2000, m, 1).strftime('%B') for m in range(1, 13)},
+            value=None,
             label=t('rep.month'),
             on_change=lambda: refresh_all()
-        ).classes('w-40').props('outlined dense dark clearable')
+        ).classes('w-40 rt-input').props('outlined dense clearable')
         
         def refresh_all():
             t_id = target_select.value if target_select else default_target
@@ -126,5 +125,5 @@ def _kpi_card(title, value, icon, color):
         with ui.row().classes('items-center gap-4'):
             ui.icon(icon).classes(f'text-3xl text-{color}-500')
             with ui.column().classes('gap-0'):
-                ui.label(title).classes('text-gray-400 text-sm')
-                ui.label(value).classes('text-2xl font-bold')
+                ui.label(title).classes('rt-muted text-sm')
+                ui.label(value).classes('text-2xl font-bold rt-title')

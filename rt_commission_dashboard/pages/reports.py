@@ -42,32 +42,32 @@ def reports_page():
                 
                 user_select = ui.select(
                     options=user_options,
-                    value=default_val, 
+                    value=default_val,
                     label=t('nav.users')
-                ).classes('w-64').props('outlined dense dark use-input filter') 
-            
+                ).classes('w-64 rt-input').props('outlined dense use-input filter')
+
             year_select = ui.select(
-                options=[str(y) for y in range(current_year, current_year-5, -1)], 
-                value=str(current_year), 
+                options=[str(y) for y in range(current_year, current_year-5, -1)],
+                value=str(current_year),
                 label=t('rep.year')
-            ).classes('w-32').props('outlined dense dark')
-            
+            ).classes('w-32 rt-input').props('outlined dense')
+
             month_select = ui.select(
-                options={f"{m:02d}": datetime(2000, m, 1).strftime('%B') for m in range(1, 13)}, 
-                value=None, 
+                options={f"{m:02d}": datetime(2000, m, 1).strftime('%B') for m in range(1, 13)},
+                value=None,
                 label=t('rep.month')
-            ).classes('w-40').props('outlined dense dark clearable')
-            
+            ).classes('w-40 rt-input').props('outlined dense clearable')
+
             type_select = ui.select(
-                options=['All', 'Retail', 'Share', 'Reward'], 
-                value='All', 
+                options=['All', 'Retail', 'Share', 'Reward'],
+                value='All',
                 label=t('rep.type')
-            ).classes('w-40').props('outlined dense dark')
-            
+            ).classes('w-40 rt-input').props('outlined dense')
+
             ui.button(t('rep.apply'), on_click=lambda: update_table()).classes('h-10').props('unelevated color=indigo-600')
-            
+
             ui.space()
-            search_input = ui.input(placeholder='Search...').props('outlined dense dark append-icon=search').classes('w-48')
+            search_input = ui.input(placeholder='Search...').props('outlined dense append-icon=search').classes('w-48 rt-input')
 
         # --- Data Table ---
         columns = [

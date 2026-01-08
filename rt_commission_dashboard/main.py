@@ -1,9 +1,11 @@
 from nicegui import ui, app
 import argparse
 import os
+import yaml
 from rt_commission_dashboard.core.config import config
-from rt_commission_dashboard.core.paths import get_data_dir
+from rt_commission_dashboard.core.paths import get_data_dir, get_config_path
 from rt_commission_dashboard.pages.login import login_page
+from rt_commission_dashboard.pages.setup import setup_page
 from rt_commission_dashboard.pages.dashboard import dashboard_page
 from rt_commission_dashboard.pages.affiliates import affiliates_page
 from rt_commission_dashboard.pages.reports import reports_page
@@ -15,6 +17,10 @@ from rt_commission_dashboard.pages.settings import settings_page
 @ui.page('/login')
 def login_route():
     login_page()
+
+@ui.page('/setup')
+def setup_route():
+    setup_page()
 
 from rt_commission_dashboard.pages.users import users_page
 
@@ -50,22 +56,59 @@ def main():
 
     args = parser.parse_args()
 
-    # Set database configuration from command-line arguments
-    if args.db_type:
-        os.environ['DATABASE_TYPE'] = args.db_type
-        print(f"📦 Database type: {args.db_type}")
+    # Check if database configuration provided via command-line
+    cli_db_configured = args.db_type or args.supabase_url or args.supabase_anon_key
 
-    if args.supabase_url:
-        os.environ['SUPABASE_URL'] = args.supabase_url
-        print(f"🔗 Supabase URL: {args.supabase_url}")
+    # Try to load saved configuration
+    settings_file = get_config_path()
+    saved_config = None
+    if settings_file.exists():
+        try:
+            with open(settings_file, 'r') as f:
+                saved_config = yaml.safe_load(f) or {}
+        except Exception as e:
+            print(f"⚠️  Warning: Could not load settings file: {e}")
 
-    if args.supabase_anon_key:
-        os.environ['SUPABASE_ANON_KEY'] = args.supabase_anon_key
-        print(f"🔑 Supabase Anon Key: {'*' * 20}... (hidden)")
+    # Set database configuration from command-line arguments (priority)
+    if cli_db_configured:
+        cli_db_type = args.db_type or 'supabase'
 
-    if args.supabase_service_key:
-        os.environ['SUPABASE_SERVICE_KEY'] = args.supabase_service_key
-        print(f"🔐 Supabase Service Key: {'*' * 20}... (hidden)")
+        if cli_db_type:
+            os.environ['DATABASE_TYPE'] = cli_db_type
+            print(f"📦 Database type: {cli_db_type}")
+
+        if args.supabase_url:
+            os.environ['SUPABASE_URL'] = args.supabase_url
+            print(f"🔗 Supabase URL: {args.supabase_url}")
+
+        if args.supabase_anon_key:
+            os.environ['SUPABASE_ANON_KEY'] = args.supabase_anon_key
+            print(f"🔑 Supabase Anon Key: {'*' * 20}... (hidden)")
+
+        if args.supabase_service_key:
+            os.environ['SUPABASE_SERVICE_KEY'] = args.supabase_service_key
+            print(f"🔐 Supabase Service Key: {'*' * 20}... (hidden)")
+
+    # If no CLI args, try to use saved configuration
+    elif saved_config and 'database' in saved_config:
+        db_config = saved_config['database']
+        db_type = db_config.get('type', 'sqlite')
+        os.environ['DATABASE_TYPE'] = db_type
+        print(f"📦 Database type (from saved config): {db_type}")
+
+        if db_type == 'supabase' and 'supabase' in db_config:
+            supabase_cfg = db_config['supabase']
+            if supabase_cfg.get('url'):
+                os.environ['SUPABASE_URL'] = supabase_cfg['url']
+                print(f"🔗 Supabase URL (from saved config): {supabase_cfg['url']}")
+            if supabase_cfg.get('anon_key'):
+                os.environ['SUPABASE_ANON_KEY'] = supabase_cfg['anon_key']
+                print(f"🔑 Supabase Anon Key (from saved config): {'*' * 20}... (hidden)")
+            if supabase_cfg.get('service_key'):
+                os.environ['SUPABASE_SERVICE_KEY'] = supabase_cfg['service_key']
+                print(f"🔐 Supabase Service Key (from saved config): {'*' * 20}... (hidden)")
+    else:
+        print("⚠️  No database configuration found. Setup page will be shown on first access.")
 
     # Configure NiceGUI storage path to use writable data directory
     storage_path = get_data_dir() / '.nicegui'
@@ -76,7 +119,7 @@ def main():
     ui.run(
         title=config.get_app_title(),
         port=args.port,
-        dark=True,
+        dark=None,  # Let theme system handle dark/light mode
         storage_secret=config.get_secret_key(),
         reload=False
     )

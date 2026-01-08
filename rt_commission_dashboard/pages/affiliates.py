@@ -52,8 +52,8 @@ def affiliates_page():
         # But get_downline_nested usually returns user themselves as root if we implemented it that way.
         # Let's check DBHandler implementation. Assuming it returns list of root nodes (usually just the user).
         
-        ui.tree(tree_data, label_key='label', children_key='children').expand().classes('text-lg text-gray-300')
-        
+        ui.tree(tree_data, label_key='label', children_key='children').expand().classes('text-lg').style('color: var(--text)')
+
         if not tree_data:
              # Even if just self, tree_data usually has 1 node if get_downline_nested includes root
-             ui.label('No downlines found yet. Start recruiting!').classes('text-gray-500 italic mt-4')
+             ui.label('No downlines found yet. Start recruiting!').classes('rt-muted italic mt-4')
