@@ -1,9 +1,15 @@
-from nicegui import ui, app
-import argparse
 import os
+import argparse
 import yaml
-from rt_commission_dashboard.core.config import config
 from rt_commission_dashboard.core.paths import get_data_dir, get_config_path
+
+# Ensure NiceGUI storage uses a writable location before NiceGUI imports
+storage_base = get_data_dir() / '.nicegui'
+os.environ.setdefault('NICEGUI_STORAGE_PATH', str(storage_base))
+storage_base.mkdir(parents=True, exist_ok=True)
+
+from nicegui import ui, app
+from rt_commission_dashboard.core.config import config
 from rt_commission_dashboard.pages.login import login_page
 from rt_commission_dashboard.pages.setup import setup_page
 from rt_commission_dashboard.pages.dashboard import dashboard_page
