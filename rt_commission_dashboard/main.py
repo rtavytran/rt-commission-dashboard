@@ -116,13 +116,16 @@ def main():
     os.environ['NICEGUI_STORAGE_PATH'] = str(storage_path)
 
     print(f"🚀 Starting {config.get_app_title()} on port {args.port}")
-    ui.run(
-        title=config.get_app_title(),
-        port=args.port,
-        dark=None,  # Let theme system handle dark/light mode
-        storage_secret=config.get_secret_key(),
-        reload=False
-    )
+    try:
+        ui.run(
+            title=config.get_app_title(),
+            port=args.port,
+            dark=None,  # Let theme system handle dark/light mode
+            storage_secret=config.get_secret_key(),
+            reload=False
+        )
+    except KeyboardInterrupt:
+        print("\n👋 Server interrupted by user. Shutting down gracefully...")
 
 if __name__ in {"__main__", "__mp_main__"}:
     main()
