@@ -60,13 +60,14 @@ def layout(content_func):
         if not app.storage.user.get('authenticated', False):
             app.storage.user['authenticated'] = True
             app.storage.user['user_info'] = {
-                'id': 1,
+                # Default seed admin for sqlite mock data
+                'id': 'u_admin',
                 'full_name': 'Administrator',
                 'email': 'admin@rt.local',
                 'role': 'admin'
             }
 
-        user = app.storage.user.get('user_info', {'full_name': 'Administrator', 'role': 'admin'})
+        user = app.storage.user.get('user_info', {'id': 'u_admin', 'full_name': 'Administrator', 'role': 'admin'})
 
         # --- Header with Navigation ---
         with ui.header().classes('items-center h-16 px-6'):

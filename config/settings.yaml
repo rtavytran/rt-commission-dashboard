@@ -1,7 +1,24 @@
-workspace:
-  name: Dashboard
-  company: Nagen
-  domain: rt.local
+app:
+  currency: vnd
+  port: 8000
+  secret_key: rt_dashboard_secret_key_123
+  theme: dark
+  title: RT Commission Dashboard
+commission:
+  max_levels: 10
+  role_rates:
+    strategic_partner: 0.35
+  tiers:
+  - rate: 0.2
+    threshold: 0
+  - rate: 0.22
+    threshold: 200000000
+  - rate: 0.25
+    threshold: 400000000
+  - rate: 0.3
+    threshold: 1000000000
+  - rate: 0.35
+    threshold: 2000000000
 database:
   type: sqlite
   filename: rt_commission_dashboard_v2.db
@@ -9,21 +26,10 @@ database:
     url: ""
     anon_key: ""
     service_key: ""
-commission:
-  tiers:
-  - threshold: 0
-    rate: 0.2
-  - threshold: 200000000
-    rate: 0.22
-  - threshold: 400000000
-    rate: 0.25
-  - threshold: 1000000000
-    rate: 0.3
-  - threshold: 2000000000
-    rate: 0.35
-  role_rates:
-    strategic_partner: 0.35
-  max_levels: 10
+mock_data:
+  admin_email: admin@rt.local
+  enabled: true
+  sample_domain: rt.local
 roles:
   admin:
     label: Administrator
@@ -44,13 +50,7 @@ roles:
     permissions:
     - Q1
     - Q2
-app:
-  title: RT Commission Dashboard
-  port: 8000
-  secret_key: rt_dashboard_secret_key_123
-  theme: dark
-  currency: vnd
-mock_data:
-  enabled: true
-  admin_email: admin@rt.local
-  sample_domain: rt.local
+workspace:
+  company: Nagen
+  domain: rt.local
+  name: Dashboard
