@@ -530,6 +530,10 @@ class DBHandler:
             query_rev = f"SELECT SUM(amount) FROM transactions WHERE type='retail_sales' AND status='approved' {date_filter}"
             cursor.execute(query_rev, params_dates)
             revenue = cursor.fetchone()[0] or 0.0
+            # Shared volumes (system-wide)
+            cursor.execute(f"SELECT SUM(amount) FROM transactions WHERE shared_with_id IS NOT NULL AND type='retail_sales' AND status='approved' {date_filter}", params_dates)
+            shared_out_amount = cursor.fetchone()[0] or 0.0
+            shared_received_amount = shared_out_amount  # same total system-wide
             
             # 2. Total Commission (monthly_stats.month is YYYY-MM)
             comm_where = ""
@@ -558,6 +562,8 @@ class DBHandler:
             c_received = row[2] or 0.0
             c_override = row[3] or 0.0
             total_comm = row[4] or 0.0
+            cursor.execute("SELECT SUM(personal_sales_volume + shared_out_volume + f1_sales_volume) FROM monthly_stats")
+            ranking_volume = cursor.fetchone()[0] or 0.0
             
             # 3. KPI Rewards
             query_kpi = f"SELECT SUM(amount) FROM transactions WHERE type='kpi_reward' AND status IN ('approved', 'paid') {date_filter}"
@@ -575,12 +581,16 @@ class DBHandler:
             
             return {
                 'revenue': revenue,
+                'shared_out_amount': shared_out_amount,
+                'shared_received_amount': shared_received_amount,
                 'commission': total_comm + kpi_reward,
                 'commission_share': total_comm,
                 'comm_direct': c_direct,
                 'comm_shared': c_shared,
                 'comm_received': c_received,
                 'comm_override': c_override,
+                'ranking_volume': ranking_volume,
+                'tier_rate': 0.0,
                 'kpi_reward': kpi_reward,
                 'new_customers': new_customers,
                 'network_size': total_users

@@ -44,7 +44,7 @@ def reports_page():
                     options=user_options,
                     value=default_val,
                     label=t('nav.users')
-                ).classes('w-72 rt-input').props('outlined dense use-input fill-input input-debounce=0 filter clearable popup-content-class=rt-input behavior=menu')
+                ).classes('w-96 rt-input text-base').props('outlined dense use-input fill-input input-debounce=0 filter clearable popup-content-class=rt-input text-primary behavior=menu')
 
             year_select = ui.select(
                 options=[str(y) for y in range(current_year, current_year-5, -1)],

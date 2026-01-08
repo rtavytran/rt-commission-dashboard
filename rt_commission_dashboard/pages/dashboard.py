@@ -35,8 +35,12 @@ def dashboard_page():
     @ui.refreshable
     def render_dashboard_content(target_id, month, year):
         # Fetch Data
-        kpis = db.get_kpi_stats(target_id, month=month, year=year)
-        monthly_data = db.get_monthly_sales(target_id, year=year)
+        if target_id == 'global':
+            kpis = db.get_global_stats(month=month, year=year)
+            monthly_data = db.get_global_monthly_sales(year=year)
+        else:
+            kpis = db.get_kpi_stats(target_id, month=month, year=year)
+            monthly_data = db.get_monthly_sales(target_id, year=year)
             
         # --- KPI Cards ---
         with ui.column().classes('w-full gap-3'):
@@ -96,7 +100,7 @@ def dashboard_page():
                     value=default_target,
                     label=t('nav.users'),
                     on_change=lambda: refresh_all()
-                ).classes('w-72 rt-input').props('outlined dense use-input fill-input input-debounce=0 filter clearable popup-content-class=rt-input behavior=menu')
+                ).classes('w-96 rt-input text-base').props('outlined dense use-input fill-input input-debounce=0 filter clearable popup-content-class=rt-input text-primary behavior=menu')
 
         # 2. Year Selector
         year_select = ui.select(
