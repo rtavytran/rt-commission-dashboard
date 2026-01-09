@@ -6,7 +6,7 @@ from rt_commission_dashboard.core.i18n import t
 
 @layout
 def users_page():
-    db = get_db_handler()
+    db = get_db_handler(app.storage.user.get('supabase_token'))
     
     # Title
     with ui.row().classes('items-center mb-6'):
@@ -16,22 +16,28 @@ def users_page():
     Theme.subtitle(t('user.subtitle'))
     
     with Theme.card():
-        # Fetch data
-        users = db.get_all_users()
-        
-        # Process for display
-        rows = []
-        for u in users:
-            row = dict(u)
-            # Dynamic Role Mapping based on I18n
-            row['role_display'] = t(f"role.{u['role']}")
-            rows.append(row)
+        def load_rows():
+            users = db.get_all_users()
+            id_lookup = {}
+            rows_local = []
+            for u in users:
+                row = dict(u)
+                row['role_display'] = t(f"role.{u['role']}")
+                id_lookup[u['id']] = f"{u.get('full_name') or ''} <{u.get('username') or u.get('email', '')}>"
+                rows_local.append(row)
+            # Fill parent display
+            for row in rows_local:
+                pid = row.get('parent_id')
+                row['parent_display'] = id_lookup.get(pid, pid or '')
+            return rows_local
+
+        rows = load_rows()
 
         columns = [
             {'name': 'full_name', 'label': t('user.name'), 'field': 'full_name', 'sortable': True, 'align': 'left'},
             {'name': 'email', 'label': t('user.email'), 'field': 'email', 'sortable': True, 'align': 'left'},
             {'name': 'role', 'label': t('user.role'), 'field': 'role_display', 'sortable': True, 'align': 'left'},
-            {'name': 'parent_id', 'label': t('user.upline'), 'field': 'parent_id', 'align': 'left'},
+            {'name': 'parent_display', 'label': t('user.upline'), 'field': 'parent_display', 'align': 'left'},
             {'name': 'created_at', 'label': t('user.joined'), 'field': 'created_at', 'sortable': True, 'align': 'right'},
         ]
         
@@ -39,6 +45,7 @@ def users_page():
         # Search Filter
         with ui.row().classes('w-full mb-4 justify-end'):
             search = ui.input(placeholder='Search...').props('outlined dense append-icon=search').classes('w-64 rt-input')
+            ui.button('Reload', on_click=lambda: table.update_rows(load_rows())).props('unelevated color=indigo-600').classes('ml-2')
 
         table = ui.table(
             columns=columns, 

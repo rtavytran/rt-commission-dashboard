@@ -21,9 +21,8 @@ commission:
     threshold: 2000000000
 database:
   supabase:
-    anon_key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImluY2VmemdxZ2J2ZGJhbnVleHRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc4NDk5NTYsImV4cCI6MjA4MzQyNTk1Nn0.0ZUmoym5Njwxe9x1FdwLz5Bh8in8scwRmye5Ixsrsg0
-    service_key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImluY2VmemdxZ2J2ZGJhbnVleHRvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Nzg0OTk1NiwiZXhwIjoyMDgzNDI1OTU2fQ.6EfZ1thlX32iFf3EGuApQ_kjCDV1ep47gPlmcjN0DHo
-    url: https://incefzgqgbvdbanuexto.supabase.co
+    anon_key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwaG9pcWtua213enN0dW9rZG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NDQzMDcsImV4cCI6MjA4MzUyMDMwN30.GyD-mcFtMEWmbdTp_T_sqVspxz9HcHPbPZEbZ4EmQjs
+    url: https://pphoiqknkmwzstuokdmz.supabase.co
   type: supabase
 mock_data:
   admin_email: admin@rt.local

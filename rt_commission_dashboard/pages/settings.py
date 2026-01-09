@@ -63,12 +63,6 @@ def settings_page():
                 value=supabase_config.get('anon_key', config.get_supabase_anon_key())
             ).props('outlined dense type=password').classes('w-full rt-input')
 
-            supabase_service_key = ui.input(
-                label='Supabase Service Key (Optional)',
-                placeholder='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-                value=supabase_config.get('service_key', config.get_supabase_service_key())
-            ).props('outlined dense type=password').classes('w-full rt-input')
-
         # Show/hide Supabase config based on selection
         def update_visibility():
             supabase_container.set_visibility(db_type_select.value == 'supabase')
@@ -97,8 +91,7 @@ def settings_page():
                 if db_type_select.value == 'supabase':
                     new_config['database']['supabase'] = {
                         'url': supabase_url.value,
-                        'anon_key': supabase_anon_key.value,
-                        'service_key': supabase_service_key.value if supabase_service_key.value else ''
+                        'anon_key': supabase_anon_key.value
                     }
 
                 # Ensure config directory exists
@@ -113,8 +106,6 @@ def settings_page():
                     os.environ['DATABASE_TYPE'] = 'supabase'
                     os.environ['SUPABASE_URL'] = supabase_url.value
                     os.environ['SUPABASE_ANON_KEY'] = supabase_anon_key.value
-                    if supabase_service_key.value:
-                        os.environ['SUPABASE_SERVICE_KEY'] = supabase_service_key.value
                 else:
                     os.environ['DATABASE_TYPE'] = 'sqlite'
 
@@ -140,5 +131,4 @@ def settings_page():
         with ui.column().classes('gap-2 rt-muted'):
             ui.label('• After changing database settings, you must restart the application.')
             ui.label('• Make sure your Supabase project has the correct schema and tables.')
-            ui.label('• The service key is optional but recommended for admin operations.')
             ui.label('• Settings are stored in the config/settings.yaml file.')

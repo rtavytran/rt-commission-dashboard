@@ -834,7 +834,7 @@ class DBHandler:
 
 # ========== Database Factory Pattern ==========
 
-def get_db_handler():
+def get_db_handler(session_token: str = None):
     """Factory function to return appropriate DB handler based on configuration."""
     from rt_commission_dashboard.core.config import config
 
@@ -843,7 +843,7 @@ def get_db_handler():
     if db_type == 'supabase':
         from rt_commission_dashboard.core.supabase_handler import SupabaseHandler
         logging.info("Using Supabase database backend")
-        return SupabaseHandler()
+        return SupabaseHandler(session_token=session_token)
     else:
         logging.info("Using SQLite database backend")
         return DBHandler()

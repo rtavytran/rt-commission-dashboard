@@ -8,7 +8,13 @@ from rt_commission_dashboard.core.currency import format_currency
 @layout
 def dashboard_page():
     user = app.storage.user.get('user_info', {})
-    db = get_db_handler()
+    db = get_db_handler(app.storage.user.get('supabase_token'))
+    data_user_id = user.get('data_user_id')
+    is_admin = user.get('role') == 'admin'
+
+    if not data_user_id and not is_admin:
+        ui.notify('Account not linked to a data user yet. Please contact an admin.', type='warning')
+        return
     
     # ... (Title omitted for brevity if unchanged, but I need to make sure import works)
     
@@ -22,14 +28,17 @@ def dashboard_page():
     current_year = datetime.now().year
     
     # Get viewable users (Self + Downline, or All if Admin), sorted by label
-    viewable_users = sorted(db.get_viewable_users(user['id'], user.get('role', 'ctv')), key=lambda u: u['label'].lower())
+    viewable_users = sorted(
+        db.get_viewable_users(data_user_id, user.get('role', 'ctv')) if data_user_id else [],
+        key=lambda u: u['label'].lower()
+    )
     user_options = {u['id']: u['label'] for u in viewable_users}
-    is_admin = user.get('role') == 'admin'
+
     if is_admin:
         user_options = {'global': f"Global Stats (Admin)", **user_options}
         default_target = 'global'
     else:
-        default_target = user['id']
+        default_target = data_user_id
 
     # Refreshable Content
     @ui.refreshable
@@ -117,7 +126,8 @@ def dashboard_page():
             label=t('rep.month'),
             on_change=lambda: refresh_all()
         ).classes('w-44 rt-input').props('outlined dense clearable popup-content-class=rt-input behavior=menu')
-        
+
+        ui.button('Reload', on_click=lambda: refresh_all()).props('unelevated color=indigo-600').classes('h-10')
         def refresh_all():
             t_id = target_select.value if target_select else default_target
             m = month_select.value

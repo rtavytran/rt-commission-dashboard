@@ -1,6 +1,7 @@
 from nicegui import ui, app
 import os
 import yaml
+import httpx
 from rt_commission_dashboard.ui.theme import Theme
 from rt_commission_dashboard.core.i18n import t, set_lang, get_current_lang
 from rt_commission_dashboard.core.paths import get_config_path
@@ -56,18 +57,24 @@ def layout(content_func):
             ui.navigate.to('/setup')
             return
 
-        # Auto-authenticate as admin (skip login)
-        if not app.storage.user.get('authenticated', False):
-            app.storage.user['authenticated'] = True
-            app.storage.user['user_info'] = {
-                # Default seed admin for sqlite mock data
-                'id': 'u_admin',
-                'full_name': 'Administrator',
-                'email': 'admin@rt.local',
-                'role': 'admin'
-            }
+        # Connectivity check for Supabase to fail fast and let user fix setup/network
+        if db_type and db_type.lower() == 'supabase':
+            try:
+                httpx.get(f"{supabase_url.rstrip('/')}/auth/v1/health", timeout=5)
+            except Exception:
+                ui.notify('Cannot reach Supabase. Check URL/anon key or network/proxy and try again.', type='negative')
+                ui.navigate.to('/setup')
+                return
 
-        user = app.storage.user.get('user_info', {'id': 'u_admin', 'full_name': 'Administrator', 'role': 'admin'})
+        # Require authentication
+        if not app.storage.user.get('authenticated', False):
+            ui.navigate.to('/login')
+            return
+
+        user = app.storage.user.get('user_info')
+        if not user:
+            ui.navigate.to('/login')
+            return
 
         # --- Header with Navigation ---
         with ui.header().classes('items-center h-16 px-6'):
@@ -137,14 +144,17 @@ def layout(content_func):
             lang_label = 'VI' if current_lang == 'vi' else 'EN'
             ui.button(f"{lang_label}", on_click=toggle_lang).props('flat dense').classes('font-bold border rounded-md px-2')
 
-            # User Menu - HIDDEN for Phase 1 (admin-only access, no logout needed)
-            # with ui.button(icon='person').props('flat dense round'):
-            #     with ui.menu():
-            #         with ui.row().classes('p-4 gap-2 items-center'):
-            #             ui.avatar(icon='person', color=Theme.PRIMARY, text_color='white').props('size=md')
-            #             ui.label(user['full_name']).classes('font-medium')
-            #         ui.separator()
-            #         ui.menu_item(t('logout'), on_click=lambda: (app.storage.user.clear(), ui.navigate.to('/login')))
+            # User Menu with logout
+            with ui.button(icon='person').props('flat dense round'):
+                with ui.menu():
+                    with ui.row().classes('p-4 gap-2 items-center'):
+                        ui.avatar(icon='person', color=Theme.PRIMARY, text_color='white').props('size=md')
+                        ui.label(user.get('full_name') or user.get('email') or 'User').classes('font-medium')
+                    ui.separator()
+                    def logout():
+                        app.storage.user.clear()
+                        ui.navigate.to('/login')
+                    ui.menu_item(t('logout'), on_click=logout)
 
         # --- Main Content (No Sidebar) ---
         # Store current path for reload

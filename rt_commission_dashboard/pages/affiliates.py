@@ -7,7 +7,12 @@ from rt_commission_dashboard.core.i18n import t
 @layout
 def affiliates_page():
     user = app.storage.user.get('user_info', {})
-    db = get_db_handler()
+    db = get_db_handler(app.storage.user.get('supabase_token'))
+    data_user_id = user.get('data_user_id')
+    is_admin = user.get('role') == 'admin'
+    if not data_user_id and not is_admin:
+        ui.notify('Account not linked to a data user yet. Please contact an admin.', type='warning')
+        return
     
     with ui.row().classes('items-center mb-6'):
         ui.icon('hub', size='md', color=Theme.SECONDARY)
@@ -17,10 +22,10 @@ def affiliates_page():
     
     with Theme.card():
         # Tree Construction - Using Nested Data
-        if user.get('role') == 'admin':
+        if is_admin:
             hierarchy = db.get_entire_network_nested()
         else:
-            hierarchy = db.get_downline_nested(user['id'])
+            hierarchy = db.get_downline_nested(data_user_id)
         
         def build_tree_nodes(nodes):
             tree_nodes = []

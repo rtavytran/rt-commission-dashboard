@@ -206,11 +206,9 @@ class Config:
             # Verify credentials are present; otherwise fall back to sqlite
             url = self.get_supabase_url()
             anon = self.get_supabase_anon_key()
-            service = self.get_supabase_service_key()
             missing = [name for name, value in [
                 ('SUPABASE_URL', url),
                 ('SUPABASE_ANON_KEY', anon),
-                ('SUPABASE_SERVICE_KEY', service),
             ] if not value]
 
             if missing:

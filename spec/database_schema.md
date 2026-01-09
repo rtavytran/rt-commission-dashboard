@@ -2,6 +2,7 @@
 
 This document defines the data structures used by the RT Commission Dashboard.
 The schema is designed to work with **SQLite** (Phase 1) and **Supabase/PostgreSQL** (Phase 2).
+In Supabase, dashboard access is governed by `profiles` (keyed to `auth.users`); core data remains in `users`, `transactions`, and `monthly_stats`.
 
 ## Entity Relationship Diagram (ERD)
 
@@ -9,13 +10,24 @@ The schema is designed to work with **SQLite** (Phase 1) and **Supabase/PostgreS
 erDiagram
     USERS ||--o{ TRANSACTIONS : "generates"
     USERS ||--o{ USERS : "refers"
+    PROFILES ||--|| USERS : "optional link (user_id)"
 
     USERS {
         string id PK "Unique ID (UUID for Supabase)"
         string email "Unique Email"
         string full_name "Display Name"
-        string role "admin, partner, agent, collaborator"
+        string role "admin, affiliate, ctv"
         string parent_id FK "Upline Reference"
+        datetime created_at
+    }
+
+    PROFILES {
+        uuid id PK "auth.users.id"
+        string email "Unique Email"
+        string full_name
+        uuid user_id FK "optional link to USERS.id"
+        string role "admin, affiliate, ctv"
+        string status "pending, approved, blocked"
         datetime created_at
     }
 
@@ -38,11 +50,27 @@ Stores all account types. Self-referencing `parent_id` for affiliate tree (Q1 Pe
 | :--- | :--- | :--- | :--- |
 | `id` | `TEXT` | `uuid` | Primary Key. |
 | `email` | `TEXT` | `varchar` | Unique login email. |
+| `username` | `TEXT` | `varchar` | Optional unique username/handle. |
 | `full_name` | `TEXT` | `varchar` | Display Name. |
 | `role` | `TEXT` | `varchar` | Enum: `ctv` (CTV), `agent` (Đại lý), `pro_agent` (Đại lý CN), `partner` (Đối tác CL), `admin`. |
 | `permissions` | `TEXT` | `jsonb` | JSON List: `['Q1', 'Q2', 'Q3', 'Q4']`. |
 | `parent_id` | `TEXT` | `uuid` | Upline ID. |
 | `created_at` | `DATETIME` | `timestamptz` | Account creation. |
+
+### 1b. Profiles (`profiles`, Supabase only)
+Dashboard access identities keyed to `auth.users`. May optionally link to a `users.id` for data visibility; some profiles may have no linked user and some users may have no profile (sales-only).
+
+| Column | Type (Supabase) | Description |
+| :--- | :--- | :--- |
+| `id` | `uuid` | Primary Key = `auth.users.id`. |
+| `email` | `citext` | Unique email (auth). |
+| `full_name` | `text` | Display name. |
+| `user_id` | `uuid` | Nullable FK to `users.id` (for data linkage). |
+| `role` | `text` | `admin`, `affiliate`, `ctv`; default `ctv`. |
+| `status` | `text` | `pending`, `approved`, `blocked`; default `pending`. |
+| `approved_by` | `uuid` | FK to `profiles.id`. |
+| `approved_at` | `timestamptz` | Approval timestamp. |
+| `created_at` | `timestamptz` | Creation time. |
 
 ### 2. Transactions (`transactions`)
 Records all financial events.

@@ -42,12 +42,6 @@ def setup_page():
                     value=os.environ.get('SUPABASE_ANON_KEY', '')
                 ).props('outlined dense type=password').classes('w-full rt-input')
 
-                supabase_service_key = ui.input(
-                    label='Supabase Service Key (Optional)',
-                    placeholder='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-                    value=os.environ.get('SUPABASE_SERVICE_KEY', '')
-                ).props('outlined dense type=password').classes('w-full rt-input')
-
             # Show/hide Supabase config based on selection
             def update_visibility():
                 supabase_container.set_visibility(db_type_select.value == 'supabase')
@@ -77,8 +71,7 @@ def setup_page():
                         'type': 'supabase',
                         'supabase': {
                             'url': supabase_url.value,
-                            'anon_key': supabase_anon_key.value,
-                            'service_key': supabase_service_key.value if supabase_service_key.value else ''
+                            'anon_key': supabase_anon_key.value
                         }
                     }
 
@@ -86,8 +79,6 @@ def setup_page():
                     os.environ['DATABASE_TYPE'] = 'supabase'
                     os.environ['SUPABASE_URL'] = supabase_url.value
                     os.environ['SUPABASE_ANON_KEY'] = supabase_anon_key.value
-                    if supabase_service_key.value:
-                        os.environ['SUPABASE_SERVICE_KEY'] = supabase_service_key.value
                 else:
                     settings['database'] = {'type': 'sqlite'}
                     os.environ['DATABASE_TYPE'] = 'sqlite'
@@ -102,17 +93,8 @@ def setup_page():
 
                 ui.notify('Configuration saved successfully!', type='positive')
 
-                # Auto-authenticate as admin
-                app.storage.user['authenticated'] = True
-                app.storage.user['user_info'] = {
-                    'id': 1,
-                    'full_name': 'Administrator',
-                    'email': 'admin@rt.local',
-                    'role': 'admin'
-                }
-
-                # Redirect to dashboard
-                ui.navigate.to('/')
+                # Redirect to login for proper auth
+                ui.navigate.to('/login')
 
             ui.button('Save Configuration & Continue', on_click=save_config).props('unelevated color=indigo-600').classes('w-full h-10 mt-4')
 

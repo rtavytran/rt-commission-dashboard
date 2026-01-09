@@ -12,6 +12,8 @@ from nicegui import ui, app
 from rt_commission_dashboard.core.config import config
 from rt_commission_dashboard.pages.login import login_page
 from rt_commission_dashboard.pages.setup import setup_page
+from rt_commission_dashboard.pages.signup import signup_page
+from rt_commission_dashboard.pages.check_email import check_email_page
 from rt_commission_dashboard.pages.dashboard import dashboard_page
 from rt_commission_dashboard.pages.affiliates import affiliates_page
 from rt_commission_dashboard.pages.reports import reports_page
@@ -27,6 +29,14 @@ def login_route():
 @ui.page('/setup')
 def setup_route():
     setup_page()
+
+@ui.page('/signup')
+def signup_route():
+    signup_page()
+
+@ui.page('/check-email')
+def check_email_route():
+    check_email_page()
 
 from rt_commission_dashboard.pages.users import users_page
 
@@ -128,7 +138,8 @@ def main():
             port=args.port,
             dark=None,  # Let theme system handle dark/light mode
             storage_secret=config.get_secret_key(),
-            reload=False
+            reload=False,
+            show=False  # do not auto-open browser; user can open manually
         )
     except KeyboardInterrupt:
         print("\n👋 Server interrupted by user. Shutting down gracefully...")

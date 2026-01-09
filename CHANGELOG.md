@@ -5,6 +5,93 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-01-09
+### Added
+- Supabase auth-first flow with `profiles` tied to `auth.users`, approval gating on `status='approved'`, and external actor support (`actor_code`/`actor_name`, nullable `user_id`).
+- Signup/login UI wired to Supabase (anon key only), with profile approval checks; settings/setup only collect URL + anon key.
+- Auto monthly stats trigger/procedure adapted to UUID `user_id`/profiles.
+
+### Changed
+- RLS policies now require approved profiles; admins can see external-actor rows (null `user_id`).
+- Spec rewritten for fresh Supabase setup (no legacy migrations), plus clear owner steps for auth/invite and RLS.
+
+### Fixed
+- Removed service-key prompts from UI; secrets stay server-side. Login no longer bypasses auth in the layout.
+
+## [1.2.14] - 2026-01-10
+### Added
+- OTP-based login and registration alongside password auth using Supabase email OTP send/verify flows.
+### Changed
+- Login/Signup share a Supabase client helper and reuse approval/profile checks for OTP and password paths.
+- Reload buttons on Dashboard and Reports now read “Reload” for consistency.
+
+## [1.2.1] - 2026-01-09
+### Changed
+- Improved signup/login UX messaging: pending profiles and approval communicated explicitly; signup warns to confirm email (if enabled) and wait for approval.
+- Login refuses access if profile is missing or not approved, with clear notifications.
+
+## [1.2.2] - 2026-01-09
+### Changed
+- Supabase runtime no longer requires service key: handler can use anon key + user session JWT; service key remains only for owner/admin tasks.
+- Pages pass the user’s Supabase JWT into the DB handler for RLS-aligned access.
+- Seeding with service key is skipped in JWT-only mode to avoid schema mismatch.
+
+## [1.2.13] - 2026-01-10
+### Changed
+- Removed dev hints from Login page; added user menu with logout in the header.
+
+## [1.2.12] - 2026-01-10
+### Fixed
+- Supabase session now sets auth with an empty refresh token (and postgrest fallback) to avoid validation errors when only an access token is available.
+
+## [1.2.11] - 2026-01-10
+### Added
+- Users table spec adds `username`; Admin > Users now shows upline as `Full Name <username/email>` and includes a reload button.
+- Added reload buttons to Dashboard and Reports pages.
+- App no longer auto-opens a browser window on start.
+### Fixed
+- Spec reflects new `username` column; minor cleanups.
+
+## [1.2.10] - 2026-01-10
+### Fixed
+- Login profile fetch now tolerates empty/blocked responses (204/missing response) by treating the profile as pending instead of throwing.
+- Spec updated: RLS policies now use helper functions to avoid recursion on `profiles` checks.
+
+## [1.2.9] - 2026-01-10
+### Changed
+- Signup now sends users to a “check email” page with instructions; Supabase email confirmation redirect is set to the app login (via `APP_BASE_URL` or localhost fallback).
+- Login error for invalid credentials now hints at email confirmation/approval.
+- Added `/check-email` route/page to guide users post-signup.
+
+## [1.2.8] - 2026-01-10
+### Fixed
+- Added Supabase connectivity check in the layout: if the project URL is unreachable, users are redirected to Setup with a clear message instead of hitting timeouts during login/data fetch.
+
+## [1.2.7] - 2026-01-10
+### Fixed
+- Login/Signup now catch Supabase connect errors and redirect back to Setup with a clear message when the URL/anon key or network/proxy prevents reaching Supabase.
+
+## [1.2.6] - 2026-01-10
+### Fixed
+- Login/Signup now redirect to Setup with a clear notice if Supabase URL/anon key are missing, avoiding timeouts when credentials aren’t entered yet.
+
+## [1.2.5] - 2026-01-10
+### Changed
+- Login now captures the mapped data user (`profiles.user_id`) and uses it (or admin role) for data queries; role defaults from linked user when available.
+- Dashboard, reports, affiliates pages gate data access on mapped data user id (unless admin) to align with profiles-as-access model.
+
+## [1.2.4] - 2026-01-10
+### Added
+- Supabase spec now defines a `public.users` compatibility view mapped to `profiles` to keep current app queries working.
+
+### Changed
+- Clarified that inserts/approvals go through `profiles`; the `users` view is read-only and only for legacy reads.
+
+## [1.2.3] - 2026-01-09
+### Changed
+- Supabase selection now requires only URL + anon key; service key is optional (owner/admin only).
+
+
 ## [1.1.0] - 2026-01-06
 
 ### Added

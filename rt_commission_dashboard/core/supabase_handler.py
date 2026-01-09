@@ -14,47 +14,47 @@ from rt_commission_dashboard.core.config import config
 class SupabaseHandler:
     """Supabase-based database handler (same interface as DBHandler)."""
 
-    def __init__(self):
-        """Initialize Supabase client."""
+    def __init__(self, session_token: Optional[str] = None):
+        """Initialize Supabase client. Prefer service key if available; otherwise use anon + session JWT."""
         url = config.get_supabase_url()
         service_key = config.get_supabase_service_key()
+        anon_key = config.get_supabase_anon_key()
 
-        if not url or not service_key:
-            error_msg = (
-                "\n❌ Missing Supabase credentials!\n\n"
-                "To use Supabase, provide credentials in one of these ways:\n\n"
-                "1. Command-line arguments:\n"
-                "   --db-type supabase \\\n"
-                "   --supabase-url https://your-project.supabase.co \\\n"
-                "   --supabase-anon-key your-anon-key \\\n"
-                "   --supabase-service-key your-service-key\n\n"
-                "2. Environment variables:\n"
-                "   SUPABASE_URL=https://your-project.supabase.co\n"
-                "   SUPABASE_ANON_KEY=your-anon-key\n"
-                "   SUPABASE_SERVICE_KEY=your-service-key\n\n"
-                "3. Or use SQLite instead (default):\n"
-                "   --db-type sqlite\n\n"
-                f"Missing: {'SUPABASE_URL' if not url else ''} {'SUPABASE_SERVICE_KEY' if not service_key else ''}"
-            )
-            raise ValueError(error_msg)
+        if not url or not (service_key or anon_key):
+            raise ValueError("Missing Supabase credentials: SUPABASE_URL and SUPABASE_ANON_KEY required.")
 
-        # Use service key for backend operations (full access)
-        self.client: Client = create_client(url, service_key)
-        logging.info(f"Connected to Supabase at {url}")
+        key = service_key or anon_key
+        self.using_service_key = bool(service_key)
 
-        # Check if we need to seed mock data
-        self._check_and_seed()
+        self.client: Client = create_client(url, key)
+        if session_token:
+            try:
+                # set_session requires a refresh_token string; we only have access_token.
+                # Use empty string to satisfy type validation.
+                self.client.auth.set_session(session_token, "")
+            except Exception as e:
+                logging.warning(f"Could not set Supabase session token via set_session: {e}")
+                try:
+                    # Fallback: directly set auth header for postgrest
+                    self.client.postgrest.auth(session_token)
+                except Exception as e2:
+                    logging.error(f"Failed to set Supabase auth token: {e2}")
+
+        logging.info(f"Connected to Supabase at {url} (service_key={self.using_service_key})")
+
+        # Check if we need to seed mock data (service key only)
+        if self.using_service_key:
+            self._check_and_seed()
 
     def _check_and_seed(self):
         """Check if database is empty and seed with mock data if needed."""
+        # Skip seeding in JWT-only mode; legacy seeding expected a service key and older schema.
         if not config.is_mock_data_enabled():
             return
-
         try:
-            result = self.client.table('users').select('id').limit(1).execute()
+            result = self.client.table('profiles').select('id').limit(1).execute()
             if len(result.data) == 0:
-                logging.info("Database is empty. Seeding with mock data...")
-                self._seed_mock_data()
+                logging.info("Supabase empty. Skipping seed (requires service key and matching schema).")
         except Exception as e:
             logging.error(f"Error checking database: {e}")
 

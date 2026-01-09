@@ -10,7 +10,12 @@ from rt_commission_dashboard.core.currency import format_currency
 @layout
 def reports_page():
     user = app.storage.user.get('user_info', {})
-    db = get_db_handler()
+    db = get_db_handler(app.storage.user.get('supabase_token'))
+    data_user_id = user.get('data_user_id')
+    is_admin = user.get('role') == 'admin'
+    if not data_user_id and not is_admin:
+        ui.notify('Account not linked to a data user yet. Please contact an admin.', type='warning')
+        return
     
     # Title
     with ui.row().classes('items-center mb-6'):
@@ -27,16 +32,19 @@ def reports_page():
         
         
         # User Filter (Admin or Parent), sorted by label
-        viewable_users = sorted(db.get_viewable_users(user['id'], user.get('role', 'ctv')), key=lambda u: u['label'].lower())
+        viewable_users = sorted(
+            db.get_viewable_users(data_user_id, user.get('role', 'ctv')) if data_user_id else [],
+            key=lambda u: u['label'].lower()
+        )
         user_options = {u['id']: u['label'] for u in viewable_users}
-        target_user_id = user['id'] # Default
+        target_user_id = data_user_id # Default
         user_select = None
         
         with ui.row().classes('w-full gap-4 items-center mb-6'):
             # Show User Selector if >1 option (Self + Downline)
             if len(user_options) > 1:
                 # Safe default value
-                default_val = user['id']
+                default_val = data_user_id
                 if default_val not in user_options:
                      default_val = list(user_options.keys())[0] if user_options else None
                 
@@ -65,6 +73,7 @@ def reports_page():
             ).classes('w-40 rt-input').props('outlined dense popup-content-class=rt-input behavior=menu')
 
             ui.button(t('rep.apply'), on_click=lambda: update_table()).classes('h-10').props('unelevated color=indigo-600')
+            ui.button('Reload', on_click=lambda: update_table()).classes('h-10').props('unelevated')
 
             ui.space()
             search_input = ui.input(placeholder='Search...').props('outlined dense append-icon=search').classes('w-48 rt-input')
