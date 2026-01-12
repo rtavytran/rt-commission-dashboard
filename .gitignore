@@ -81,3 +81,7 @@ tests/
 # Environment variables (keep .env.example)
 .env
 !.env.example
+
+# Supabase temporary files
+supabase/.temp/
+supabase/**/.temp/

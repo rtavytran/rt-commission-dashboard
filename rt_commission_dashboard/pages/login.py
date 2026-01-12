@@ -17,9 +17,27 @@ def login_page():
         with Theme.card():
             ui.label('Sign In').classes('text-xl font-bold mb-6 text-center w-full')
 
-            email = ui.input('Email').props('outlined dense').classes('w-full mb-4 rt-input')
-            password = ui.input('Password').props('outlined dense type=password').classes('w-full mb-4 rt-input')
-            otp_code = ui.input('One-time code (OTP)').props('outlined dense inputmode=numeric pattern=\\d* maxlength=6').classes('w-full mb-6 rt-input')
+            # Tabs for Password and OTP login
+            with ui.tabs().classes('w-full') as tabs:
+                password_tab = ui.tab('Password')
+                otp_tab = ui.tab('OTP Login')
+
+            # Helper functions
+            def get_base_url():
+                """Resolve the base URL to send in Supabase email redirects."""
+                env_url = os.environ.get('APP_BASE_URL')
+                if env_url:
+                    return env_url.rstrip('/')
+                try:
+                    request = ui.context.client.request  # Provided by NiceGUI (Starlette Request)
+                    if request and getattr(request, 'base_url', None):
+                        return str(request.base_url).rstrip('/')
+                except Exception:
+                    # Fall back to localhost:runtime_port if request context is unavailable
+                    pass
+                # Use runtime port if available, otherwise use config default
+                port = os.environ.get('RUNTIME_PORT') or config.get_app_port()
+                return f"http://localhost:{port}"
 
             def get_supabase_client():
                 supabase_url = config.get_supabase_url()
@@ -30,7 +48,7 @@ def login_page():
                     return None
                 return create_client(supabase_url, supabase_anon)
 
-            def complete_login(auth_response, client):
+            def complete_login(auth_response, client, user_email):
                 if not auth_response or not getattr(auth_response, 'user', None):
                     ui.notify('Login failed: missing user details in response.', type='negative')
                     return
@@ -83,7 +101,7 @@ def login_page():
                 app.storage.user['authenticated'] = True
                 app.storage.user['user_info'] = {
                     'id': user_id,
-                    'email': profile.get('email') if profile else email.value,
+                    'email': profile.get('email') if profile else user_email,
                     'role': effective_role,
                     'full_name': (profile or {}).get('full_name', ''),
                     'data_user_id': data_user_id
@@ -92,87 +110,140 @@ def login_page():
                 ui.notify('Welcome back!', type='positive')
                 ui.navigate.to('/')
 
-            def handle_login():
-                # Supabase auth path (default)
-                if config.get_database_type() == 'supabase':
-                    client = get_supabase_client()
-                    if client is None:
-                        return
+            with ui.tab_panels(tabs, value=password_tab).classes('w-full'):
+                # Password Login Tab
+                with ui.tab_panel(password_tab):
+                    email = ui.input('Email').props('outlined dense type=email').classes('w-full mb-4 rt-input')
+                    password = ui.input('Password').props('outlined dense type=password').classes('w-full mb-4 rt-input')
 
-                    try:
-                        auth_response = client.auth.sign_in_with_password({
-                            'email': email.value,
-                            'password': password.value
-                        })
-                        complete_login(auth_response, client)
-                        return
-                    except httpx.RequestError:
-                        ui.notify('Cannot reach Supabase. Check URL/anon key or network/proxy and try again.', type='negative')
-                        ui.navigate.to('/setup')
-                        return
-                    except Exception as exc:  # noqa: BLE001
-                        msg = str(exc)
-                        if 'Invalid login credentials' in msg:
-                            ui.notify('Invalid credentials or email not confirmed. Please confirm your email and ensure admin approval.', type='negative')
+                    def handle_login():
+                        if not email.value:
+                            ui.notify('Please enter your email.', type='warning')
+                            return
+                        if not password.value:
+                            ui.notify('Please enter your password.', type='warning')
+                            return
+
+                        # Supabase auth path (default)
+                        if config.get_database_type() == 'supabase':
+                            client = get_supabase_client()
+                            if client is None:
+                                return
+
+                            try:
+                                auth_response = client.auth.sign_in_with_password({
+                                    'email': email.value,
+                                    'password': password.value
+                                })
+                                complete_login(auth_response, client, email.value)
+                                return
+                            except httpx.RequestError:
+                                ui.notify('Cannot reach Supabase. Check URL/anon key or network/proxy and try again.', type='negative')
+                                ui.navigate.to('/setup')
+                                return
+                            except Exception as exc:  # noqa: BLE001
+                                msg = str(exc)
+                                if 'Invalid login credentials' in msg:
+                                    ui.notify('Invalid credentials or email not confirmed. Please confirm your email and ensure admin approval.', type='negative')
+                                else:
+                                    ui.notify(f'Login failed: {exc}', type='negative')
+                                return
+
+                        # SQLite fallback (legacy)
+                        db = get_db_handler()
+                        user = db.get_user(email.value)
+                        if user:
+                            app.storage.user['authenticated'] = True
+                            app.storage.user['user_info'] = user
+                            ui.notify('Welcome back!', type='positive')
+                            ui.navigate.to('/')
                         else:
-                            ui.notify(f'Login failed: {exc}', type='negative')
-                        return
+                            ui.notify('Invalid email (Try: admin@rt.local)', type='negative')
 
-                # SQLite fallback (legacy)
-                db = get_db_handler()
-                user = db.get_user(email.value)
-                if user:
-                    app.storage.user['authenticated'] = True
-                    app.storage.user['user_info'] = user
-                    ui.notify('Welcome back!', type='positive')
-                    ui.navigate.to('/')
-                else:
-                    ui.notify('Invalid email (Try: admin@rt.local)', type='negative')
+                    ui.button('Login', on_click=handle_login).props('unelevated color=indigo-600').classes('w-full h-10')
 
-            def send_otp():
-                if not email.value:
-                    ui.notify('Please enter your email to receive an OTP.', type='warning')
-                    return
-                client = get_supabase_client()
-                if client is None:
-                    return
-                try:
-                    client.auth.sign_in_with_otp({
-                        'email': email.value,
-                        'options': {'should_create_user': False}
-                    })
-                    ui.notify('OTP sent. Check your email for the code.', type='positive')
-                except httpx.RequestError:
-                    ui.notify('Cannot reach Supabase. Check URL/anon key or network/proxy and try again.', type='negative')
-                    ui.navigate.to('/setup')
-                except Exception as exc:  # noqa: BLE001
-                    ui.notify(f'Failed to send OTP: {exc}', type='negative')
+                # OTP Login Tab
+                with ui.tab_panel(otp_tab):
+                    email_otp = ui.input('Email').props('outlined dense type=email').classes('w-full mb-4 rt-input')
 
-            def handle_otp_login():
-                if not email.value:
-                    ui.notify('Please enter your email.', type='warning')
-                    return
-                if not otp_code.value:
-                    ui.notify('Enter the OTP code sent to your email.', type='warning')
-                    return
-                client = get_supabase_client()
-                if client is None:
-                    return
-                try:
-                    auth_response = client.auth.verify_otp({
-                        'email': email.value,
-                        'token': otp_code.value,
-                        'type': 'email'
-                    })
-                    complete_login(auth_response, client)
-                except httpx.RequestError:
-                    ui.notify('Cannot reach Supabase. Check URL/anon key or network/proxy and try again.', type='negative')
-                    ui.navigate.to('/setup')
-                except Exception as exc:  # noqa: BLE001
-                    ui.notify(f'OTP verification failed: {exc}', type='negative')
+                    # OTP cooldown state
+                    otp_state = {'cooldown': 0}
 
-            ui.button('Login', on_click=handle_login).props('unelevated color=indigo-600').classes('w-full h-10 mb-2')
-            with ui.row().classes('w-full gap-2'):
-                ui.button('Send OTP', on_click=send_otp).props('outline color=indigo-600').classes('flex-1 h-10')
-                ui.button('Login with OTP', on_click=handle_otp_login).props('unelevated color=indigo-600').classes('flex-1 h-10')
+                    def update_send_button():
+                        """Update send button based on cooldown state."""
+                        if otp_state['cooldown'] > 0:
+                            send_btn.text = f"Resend in {otp_state['cooldown']}s"
+                            send_btn.props('disable')
+                        else:
+                            send_btn.text = "Send OTP Code"
+                            send_btn.props(remove='disable')
+
+                    def start_cooldown():
+                        """Start 60-second cooldown."""
+                        otp_state['cooldown'] = 60
+                        update_send_button()
+
+                        def tick():
+                            if otp_state['cooldown'] > 0:
+                                otp_state['cooldown'] -= 1
+                                update_send_button()
+
+                        timer = ui.timer(1.0, tick)
+                        ui.timer(60.0, lambda: timer.cancel(), once=True)
+
+                    def send_otp():
+                        if not email_otp.value:
+                            ui.notify('Please enter your email to receive an OTP.', type='warning')
+                            return
+
+                        client = get_supabase_client()
+                        if client is None:
+                            return
+                        base_url = get_base_url()
+                        email_redirect = f"{base_url}/login"
+                        try:
+                            client.auth.sign_in_with_otp({
+                                'email': email_otp.value,
+                                'options': {
+                                    'should_create_user': False,
+                                    'email_redirect_to': email_redirect
+                                }
+                            })
+                            ui.notify('OTP sent. Check your email for the code.', type='positive')
+                            start_cooldown()
+                        except httpx.RequestError:
+                            ui.notify('Cannot reach Supabase. Check URL/anon key or network/proxy and try again.', type='negative')
+                            ui.navigate.to('/setup')
+                        except Exception as exc:  # noqa: BLE001
+                            ui.notify(f'Failed to send OTP: {exc}', type='negative')
+
+                    send_btn = ui.button('Send OTP Code', on_click=send_otp).props('outline color=indigo-600').classes('w-full h-10 mb-4')
+
+                    otp_code = ui.input('OTP Code').props('outlined dense inputmode=numeric pattern=\\d* maxlength=6').classes('w-full mb-4 rt-input')
+
+                    def handle_otp_login():
+                        if not email_otp.value:
+                            ui.notify('Please enter your email.', type='warning')
+                            return
+                        if not otp_code.value:
+                            ui.notify('Enter the OTP code sent to your email.', type='warning')
+                            return
+                        client = get_supabase_client()
+                        if client is None:
+                            return
+                        try:
+                            auth_response = client.auth.verify_otp({
+                                'email': email_otp.value,
+                                'token': otp_code.value,
+                                'type': 'email'
+                            })
+                            complete_login(auth_response, client, email_otp.value)
+                        except httpx.RequestError:
+                            ui.notify('Cannot reach Supabase. Check URL/anon key or network/proxy and try again.', type='negative')
+                            ui.navigate.to('/setup')
+                        except Exception as exc:  # noqa: BLE001
+                            ui.notify(f'OTP verification failed: {exc}', type='negative')
+
+                    ui.button('Login with OTP', on_click=handle_otp_login).props('unelevated color=indigo-600').classes('w-full h-10')
+
             ui.link('Create account', '/signup').classes('block text-center mt-3 text-sm text-indigo-500')

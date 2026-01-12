@@ -17,8 +17,23 @@ def signup_page():
 
             email = ui.input('Email').props('outlined dense type=email').classes('w-full mb-4 rt-input')
             password = ui.input('Password').props('outlined dense type=password').classes('w-full mb-4 rt-input')
-            confirm = ui.input('Confirm Password').props('outlined dense type=password').classes('w-full mb-4 rt-input')
-            otp_code = ui.input('OTP code (passwordless option)').props('outlined dense inputmode=numeric pattern=\\d* maxlength=6').classes('w-full mb-6 rt-input')
+            confirm = ui.input('Confirm Password').props('outlined dense type=password').classes('w-full mb-6 rt-input')
+
+            def get_base_url():
+                """Resolve the base URL to send in Supabase email redirects."""
+                env_url = os.environ.get('APP_BASE_URL')
+                if env_url:
+                    return env_url.rstrip('/')
+                try:
+                    request = ui.context.client.request  # Provided by NiceGUI (Starlette Request)
+                    if request and getattr(request, 'base_url', None):
+                        return str(request.base_url).rstrip('/')
+                except Exception:
+                    # Fall back to localhost:runtime_port if request context is unavailable
+                    pass
+                # Use runtime port if available, otherwise use config default
+                port = os.environ.get('RUNTIME_PORT') or config.get_app_port()
+                return f"http://localhost:{port}"
 
             def get_supabase_client():
                 supabase_url = config.get_supabase_url()
@@ -40,12 +55,7 @@ def signup_page():
                 client = get_supabase_client()
                 if client is None:
                     return
-                base_url = os.environ.get('APP_BASE_URL')
-                if base_url:
-                    base_url = base_url.rstrip('/')
-                else:
-                    # Fallback to localhost default port; users can override APP_BASE_URL
-                    base_url = f"http://localhost:{config.get_app_port()}"
+                base_url = get_base_url()
                 email_redirect = f"{base_url}/login"
                 try:
                     resp = client.auth.sign_up(
@@ -60,7 +70,7 @@ def signup_page():
                     if resp.user and resp.user.email_confirmed_at:
                         ui.notify('Account created. Pending approval.', type='positive')
                     else:
-                        ui.notify('Signup initiated. Check your email to confirm. Then wait for admin approval.', type='positive')
+                        ui.notify('Signup initiated. Check your email inbox for the confirmation link. After you confirm, return here to log in.', type='positive')
                     ui.navigate.to(f"/check-email?email={email.value}")
                 except httpx.RequestError:
                     ui.notify('Cannot reach Supabase. Check URL/anon key or network/proxy and try again.', type='negative')
@@ -68,51 +78,5 @@ def signup_page():
                 except Exception as exc:  # noqa: BLE001
                     ui.notify(f'Signup failed: {exc}', type='negative')
 
-            def send_signup_otp():
-                if not email.value:
-                    ui.notify('Please enter email to receive an OTP.', type='warning')
-                    return
-                client = get_supabase_client()
-                if client is None:
-                    return
-                try:
-                    client.auth.sign_in_with_otp({
-                        'email': email.value,
-                        'options': {'should_create_user': True}
-                    })
-                    ui.notify('OTP sent. Check your email to finish signup.', type='positive')
-                except httpx.RequestError:
-                    ui.notify('Cannot reach Supabase. Check URL/anon key or network/proxy and try again.', type='negative')
-                    ui.navigate.to('/setup')
-                except Exception as exc:  # noqa: BLE001
-                    ui.notify(f'Failed to send OTP: {exc}', type='negative')
-
-            def verify_signup_otp():
-                if not email.value:
-                    ui.notify('Please enter email before verifying.', type='warning')
-                    return
-                if not otp_code.value:
-                    ui.notify('Enter the OTP code sent to your email.', type='warning')
-                    return
-                client = get_supabase_client()
-                if client is None:
-                    return
-                try:
-                    client.auth.verify_otp({
-                        'email': email.value,
-                        'token': otp_code.value,
-                        'type': 'email'
-                    })
-                    ui.notify('OTP verified. Account created/pending approval. You can log in after approval.', type='positive')
-                    ui.navigate.to(f"/check-email?email={email.value}")
-                except httpx.RequestError:
-                    ui.notify('Cannot reach Supabase. Check URL/anon key or network/proxy and try again.', type='negative')
-                    ui.navigate.to('/setup')
-                except Exception as exc:  # noqa: BLE001
-                    ui.notify(f'OTP verification failed: {exc}', type='negative')
-
-            ui.button('Sign Up', on_click=handle_signup).props('unelevated color=indigo-600').classes('w-full h-10 mb-2')
-            with ui.row().classes('w-full gap-2'):
-                ui.button('Send OTP', on_click=send_signup_otp).props('outline color=indigo-600').classes('flex-1 h-10')
-                ui.button('Verify OTP & Register', on_click=verify_signup_otp).props('unelevated color=indigo-600').classes('flex-1 h-10')
+            ui.button('Sign Up', on_click=handle_signup).props('unelevated color=indigo-600').classes('w-full h-10 mb-4')
             ui.link('Back to Login', '/login').classes('block text-center mt-3 text-sm text-indigo-500')

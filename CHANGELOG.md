@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.19] - 2026-01-12
+### Added
+- JWT token validation in layout decorator to catch expired tokens and redirect to login with proper message instead of showing 500 error.
+- New "Dashboard Profiles" admin page to manage RealTimeX dashboard access (profiles table).
+- Profile management interface for admins to view and edit user profiles (role, status, linked user).
+- Inline editing for profiles with ability to update role, status, and user linkage.
+- Profile approval workflow with proper tracking of approved_by and approved_at timestamps.
+
+### Fixed
+- Session expiration now properly redirects to login page with "Your session has expired" message instead of showing 500 error.
+- JWT tokens are now validated on each page load to ensure they haven't expired.
+
 ## [1.2.0] - 2026-01-09
 ### Added
 - Supabase auth-first flow with `profiles` tied to `auth.users`, approval gating on `status='approved'`, and external actor support (`actor_code`/`actor_name`, nullable `user_id`).
@@ -17,6 +29,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Removed service-key prompts from UI; secrets stay server-side. Login no longer bypasses auth in the layout.
+
+## [1.2.18] - 2026-01-10
+### Changed
+- Redesigned login page with tabbed interface: separate "Password" and "OTP Login" tabs for clearer UX.
+- Password and OTP login methods now have dedicated, focused interfaces instead of showing all fields at once.
+
+### Added
+- 60-second cooldown timer on "Send OTP Code" button to prevent spam and match Supabase rate limits.
+- Real-time countdown display showing "Resend in Xs..." during cooldown period.
+- Button automatically re-enables after cooldown expires.
+
+### Improved
+- Better mobile experience with less clutter on small screens.
+- Clearer user flow - users see one login method at a time.
+- Visual feedback during OTP request cooldown.
+
+## [1.2.17] - 2026-01-10
+### Changed
+- Simplified signup page to password-based registration only (removed OTP options from signup flow).
+- OTP login is now exclusively available on the login page, keeping signup flow clean and straightforward.
+
+### Added
+- SUPABASE_OTP_SETUP.md documentation guide for configuring Supabase to send actual 6-digit OTP codes instead of magic links.
+
+## [1.2.16] - 2026-01-10
+### Fixed
+- Supabase OTP/magic link emails now redirect to the correct port when using custom `--port` argument (e.g., port 8001) instead of defaulting to localhost:3000.
+- Email redirect URL detection now uses: 1) APP_BASE_URL env var, 2) runtime request base URL, or 3) runtime port from command-line args.
+- Post-signup messaging clarified to guide users through email confirmation and admin approval flow.
 
 ## [1.2.14] - 2026-01-10
 ### Added

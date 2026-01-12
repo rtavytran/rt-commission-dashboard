@@ -1,6 +1,6 @@
 [project]
 name = "rt-commission-dashboard"
-version = "1.2.14"
+version = "1.2.19"
 description = "Multi-tier sales & commission tracking dashboard with hierarchical affiliate networks"
 readme = "README.md"
 license = {file = "LICENSE"}

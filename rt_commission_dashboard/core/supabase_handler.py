@@ -404,6 +404,36 @@ class SupabaseHandler:
         result = self.client.table('users').select('*').order('created_at', desc=True).execute()
         return result.data
 
+    # ========== Profile Methods ==========
+
+    def get_all_profiles(self) -> List[Dict]:
+        """Fetches all profiles for admin management."""
+        result = self.client.table('profiles').select('*').order('created_at', desc=True).execute()
+        return result.data
+
+    def update_profile(self, profile_id: str, updates: Dict) -> bool:
+        """Update a profile's details."""
+        try:
+            self.client.table('profiles').update(updates).eq('id', profile_id).execute()
+            return True
+        except Exception as e:
+            logging.error(f"Failed to update profile {profile_id}: {e}")
+            return False
+
+    def approve_profile(self, profile_id: str, approver_id: str) -> bool:
+        """Approve a profile and set approved_by and approved_at."""
+        from datetime import datetime
+        try:
+            self.client.table('profiles').update({
+                'status': 'approved',
+                'approved_by': approver_id,
+                'approved_at': datetime.now().isoformat()
+            }).eq('id', profile_id).execute()
+            return True
+        except Exception as e:
+            logging.error(f"Failed to approve profile {profile_id}: {e}")
+            return False
+
     # ========== Stats Methods ==========
 
     def get_kpi_stats(self, user_id: str, month: Optional[int] = None, year: Optional[int] = None) -> Dict:

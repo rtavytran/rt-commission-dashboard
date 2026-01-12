@@ -2,9 +2,31 @@ from nicegui import ui, app
 import os
 import yaml
 import httpx
+from supabase import create_client
 from rt_commission_dashboard.ui.theme import Theme
 from rt_commission_dashboard.core.i18n import t, set_lang, get_current_lang
 from rt_commission_dashboard.core.paths import get_config_path
+from rt_commission_dashboard.core.config import config
+
+def validate_jwt_token(token: str) -> bool:
+    """Validate if the JWT token is still valid."""
+    if not token:
+        return False
+
+    try:
+        supabase_url = config.get_supabase_url()
+        supabase_anon = config.get_supabase_anon_key()
+
+        if not supabase_url or not supabase_anon:
+            return False
+
+        client = create_client(supabase_url, supabase_anon)
+        # Try to get user with the token
+        response = client.auth.get_user(token)
+        return response.user is not None
+    except Exception as e:
+        # Token is expired or invalid
+        return False
 
 def layout(content_func):
     """Decorator to wrap pages in the standard dashboard layout."""
@@ -76,6 +98,16 @@ def layout(content_func):
             ui.navigate.to('/login')
             return
 
+        # Validate JWT token if using Supabase
+        if db_type and db_type.lower() == 'supabase':
+            token = app.storage.user.get('supabase_token')
+            if token and not validate_jwt_token(token):
+                # Token expired - clear session and redirect to login
+                app.storage.user.clear()
+                ui.notify('Your session has expired. Please login again.', type='warning')
+                ui.navigate.to('/login')
+                return
+
         # --- Header with Navigation ---
         with ui.header().classes('items-center h-16 px-6'):
             # Logo/Brand
@@ -101,6 +133,7 @@ def layout(content_func):
                         ui.label('Admin').classes('ml-1')
                         with ui.menu():
                             ui.menu_item(t('nav.users'), on_click=lambda: ui.navigate.to('/admin/users'))
+                            ui.menu_item('Dashboard Profiles', on_click=lambda: ui.navigate.to('/admin/profiles'))
                             ui.menu_item(t('nav.contracts'), on_click=lambda: ui.navigate.to('/admin/contracts'))
                             ui.menu_item(t('nav.settings'), on_click=lambda: ui.navigate.to('/admin/settings'))
 

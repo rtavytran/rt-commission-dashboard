@@ -39,11 +39,13 @@ def check_email_route():
     check_email_page()
 
 from rt_commission_dashboard.pages.users import users_page
+from rt_commission_dashboard.pages.profiles import profiles_page
 
 ui.page('/')(dashboard_page)
 ui.page('/affiliates')(affiliates_page)
 ui.page('/reports')(reports_page)
 ui.page('/admin/users')(users_page)
+ui.page('/admin/profiles')(profiles_page)
 ui.page('/admin/settings')(settings_page)
 
 from rt_commission_dashboard.ui.layout import layout
@@ -130,6 +132,9 @@ def main():
     storage_path = get_data_dir() / '.nicegui'
     storage_path.mkdir(parents=True, exist_ok=True)
     os.environ['NICEGUI_STORAGE_PATH'] = str(storage_path)
+
+    # Store runtime port in environment for access in page handlers
+    os.environ['RUNTIME_PORT'] = str(args.port)
 
     print(f"🚀 Starting {config.get_app_title()} on port {args.port}")
     try:
