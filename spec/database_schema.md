@@ -79,12 +79,12 @@ Records all financial events.
 
 | Column | Type (SQLite) | Type (Supabase) | Description |
 | :--- | :--- | :--- | :--- |
-| `id` | `TEXT` | `uuid` | Primary Key. |
+| `id` | `TEXT` | `text` | Primary Key. |
 | `user_id` | `TEXT` | `uuid` | Who gets the money/credit. |
 | `amount` | `REAL` | `numeric` | Transaction value. |
 | `type` | `TEXT` | `varchar` | Enum: `retail_sales`, `commission`, `kpi_reward`. |
 | `status` | `TEXT` | `varchar` | Enum: `pending`, `approved`. |
-| `reference_id` | `TEXT` | `uuid` | ID of the source transaction (e.g., the retail sale that generated this comm). |
+| `reference_id` | `TEXT` | `text` | ID of the source transaction (e.g., the retail sale that generated this comm). |
 | `shared_with_id` | `TEXT` | `uuid` | For Shared Opportunities: The other beneficiary User ID. |
 | `metadata` | `TEXT` | `jsonb` | JSON: `{customer_name, product_id, order_details}`. |
 | `created_at` | `DATETIME` | `timestamptz` | timestamp. |
