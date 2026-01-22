@@ -131,7 +131,7 @@ def layout(content_func):
                 if user['role'] == 'admin':
                     with ui.button(icon='admin_panel_settings').props('flat dense'):
                         ui.label(t('nav.admin')).classes('ml-1')
-                        with ui.menu():
+                        with ui.menu().classes('rt-admin-menu'):
                             ui.menu_item(t('nav.users'), on_click=lambda: ui.navigate.to('/admin/users'))
                             ui.menu_item(t('nav.profiles'), on_click=lambda: ui.navigate.to('/admin/profiles'))
                             ui.menu_item(t('nav.contracts'), on_click=lambda: ui.navigate.to('/admin/contracts'))

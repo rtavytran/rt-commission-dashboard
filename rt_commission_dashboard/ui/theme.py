@@ -251,6 +251,13 @@ class Theme:
                 .q-select--with-input .q-field__native {
                     color: var(--text) !important;
                 }
+
+                /* Admin dropdown menu text (light/dark safe) */
+                .rt-admin-menu,
+                .rt-admin-menu *,
+                .rt-admin-menu .q-item__label {
+                    color: var(--text) !important;
+                }
             </style>
 
             <script>
