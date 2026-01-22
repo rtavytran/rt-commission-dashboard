@@ -3,8 +3,8 @@ import argparse
 import yaml
 from rt_commission_dashboard.core.paths import get_data_dir, get_config_path
 
-# Ensure NiceGUI storage uses a writable location before NiceGUI imports
-storage_base = get_data_dir() / '.nicegui'
+# Ensure NiceGUI storage uses a writable, per-process location before NiceGUI imports (avoid Windows file locks)
+storage_base = get_data_dir() / '.nicegui' / str(os.getpid())
 os.environ.setdefault('NICEGUI_STORAGE_PATH', str(storage_base))
 storage_base.mkdir(parents=True, exist_ok=True)
 
@@ -133,8 +133,8 @@ def main():
     else:
         print("⚠️  No database configuration found. Setup page will be shown on first access.")
 
-    # Configure NiceGUI storage path to use writable data directory
-    storage_path = get_data_dir() / '.nicegui'
+    # Configure NiceGUI storage path to use writable, per-process data directory (avoids handle locks on Windows)
+    storage_path = get_data_dir() / '.nicegui' / str(os.getpid())
     storage_path.mkdir(parents=True, exist_ok=True)
     os.environ['NICEGUI_STORAGE_PATH'] = str(storage_path)
 

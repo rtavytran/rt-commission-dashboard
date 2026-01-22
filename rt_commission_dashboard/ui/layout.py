@@ -103,7 +103,14 @@ def layout(content_func):
             token = app.storage.user.get('supabase_token')
             if token and not validate_jwt_token(token):
                 # Token expired - clear session and redirect to login
-                app.storage.user.clear()
+                try:
+                    app.storage.user.clear()
+                except PermissionError:
+                    # Fallback for Windows file locks on storage files
+                    try:
+                        app.storage.user._data = {}
+                    except Exception:
+                        pass
                 ui.notify('Your session has expired. Please login again.', type='warning')
                 ui.navigate.to('/login')
                 return
