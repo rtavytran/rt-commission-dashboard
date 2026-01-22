@@ -25,7 +25,10 @@ const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 // Keycloak configuration (optional - for OAuth2 support)
 const KEYCLOAK_ISSUER = Deno.env.get('KEYCLOAK_ISSUER') || 'https://accounts.rtworkspace.com/auth/realms/rta'
 const KEYCLOAK_JWKS_URL = Deno.env.get('KEYCLOAK_JWKS_URL') || `${KEYCLOAK_ISSUER}/protocol/openid-connect/certs`
-const KEYCLOAK_AUDIENCES = ['dashboard-viewer', 'C155', 'account']
+const KEYCLOAK_AUDIENCES = (Deno.env.get('KEYCLOAK_AUDIENCES')
+  ?.split(',')
+  .map(s => s.trim())
+  .filter(Boolean)) || ['dashboard-viewer', 'C155', 'account']
 const CLOCK_TOLERANCE = 30 // seconds
 
 // Create JWKS client for Keycloak JWT verification (lazy-loaded)
