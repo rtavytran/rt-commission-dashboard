@@ -83,6 +83,14 @@ interface DashboardResponse {
     email: string
     role: string
   }
+  target_user: {
+    id: string
+    username: string | null
+    full_name: string | null
+    email: string
+    role: string
+  }
+  viewable_users: { id: string, label: string }[]
   summary: {
     total_sales: number
     total_commissions: number
@@ -97,6 +105,10 @@ interface AuthResult {
   email: string
   username?: string
   method: 'keycloak' | 'supabase'
+}
+
+interface UserWithParent extends User {
+  parent_id?: string | null
 }
 
 // ==================== Main Handler ====================
@@ -190,11 +202,31 @@ serve(async (req: Request) => {
 
     console.log(`User found - ID: ${user.id}, Email: ${user.email}, Role: ${user.role}`)
 
+    // ===== STEP 3.1: Determine target user (self or downline) =====
+    const requestBody = await parseJsonBody(req)
+    const { target_user_id: requestedTargetId } = requestBody || {}
+
+    const downlineUsers = await fetchDownlineUsers(supabaseService, user.id)
+    const viewableUsers = buildViewableUsers(user, downlineUsers)
+    const allowedIds = new Set(viewableUsers.map(u => u.id))
+
+    const targetUserId = (requestedTargetId && allowedIds.has(requestedTargetId))
+      ? requestedTargetId
+      : user.id
+
+    const targetUser = targetUserId === user.id
+      ? user
+      : (downlineUsers.find(u => u.id === targetUserId) as UserWithParent | undefined)
+
+    if (!targetUser) {
+      return corsResponse({ error: 'Target user not found or not allowed' }, 403)
+    }
+
     // ===== STEP 5: Fetch transactions =====
     const { data: transactions, error: txError } = await supabaseService
       .from('transactions')
       .select('id, user_id, amount, type, status, shared_with_id, metadata, created_at')
-      .eq('user_id', user.id)
+      .eq('user_id', targetUserId)
       .order('created_at', { ascending: false })
       .limit(50)
 
@@ -207,7 +239,7 @@ serve(async (req: Request) => {
     const { data: monthlyStats, error: statsError } = await supabaseService
       .from('monthly_stats')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', targetUserId)
       .order('month', { ascending: false })
       .limit(12)
 
@@ -239,6 +271,14 @@ serve(async (req: Request) => {
         email: user.email,
         role: user.role
       },
+      target_user: {
+        id: targetUser.id,
+        username: targetUser.username,
+        full_name: targetUser.full_name,
+        email: targetUser.email,
+        role: targetUser.role,
+      },
+      viewable_users: viewableUsers,
       summary: {
         total_sales: totalSales,
         total_commissions: totalCommissions,
@@ -382,4 +422,59 @@ function corsResponse(data: any, status: number): Response {
       }
     }
   )
+}
+
+async function parseJsonBody(req: Request): Promise<any> {
+  try {
+    const body = await req.json()
+    return body || {}
+  } catch (_err) {
+    return {}
+  }
+}
+
+async function fetchDownlineUsers(supabaseService: any, rootUserId: string): Promise<UserWithParent[]> {
+  const visited = new Set<string>([rootUserId])
+  const results: UserWithParent[] = []
+  let frontier: string[] = [rootUserId]
+  const MAX_ITERATIONS = 10
+
+  for (let depth = 0; depth < MAX_ITERATIONS && frontier.length > 0; depth++) {
+    const { data, error } = await supabaseService
+      .from('users')
+      .select('id, username, full_name, email, role, parent_id')
+      .in('parent_id', frontier)
+
+    if (error) {
+      console.error('Downline query error:', error)
+      throw new Error(`Failed to fetch downline: ${error.message}`)
+    }
+
+    const next: string[] = []
+    for (const u of data || []) {
+      if (!visited.has(u.id)) {
+        visited.add(u.id)
+        results.push(u as UserWithParent)
+        next.push(u.id)
+      }
+    }
+    frontier = next
+  }
+
+  return results
+}
+
+function buildViewableUsers(self: UserWithParent, downline: UserWithParent[]): { id: string, label: string }[] {
+  const formatLabel = (u: UserWithParent) => u.full_name || u.username || u.email || u.id
+  const mapped = [
+    { id: self.id, label: formatLabel(self) },
+    ...downline.map(u => ({ id: u.id, label: formatLabel(u) }))
+  ]
+  // ensure uniqueness and stable order (self first, then downline)
+  const seen = new Set<string>()
+  return mapped.filter(u => {
+    if (seen.has(u.id)) return false
+    seen.add(u.id)
+    return true
+  })
 }

@@ -227,6 +227,7 @@ declare
     v_total_vol numeric;
     v_new_rate numeric;
     v_stat_id text := p_user_id::text || '_' || p_month;
+    v_parent_id uuid;
 begin
     select coalesce(personal_sales_volume + shared_out_volume + received_volume, 0)
       into v_total_vol
@@ -239,6 +240,17 @@ begin
            total_commission = (personal_sales_volume * v_new_rate),
            last_updated = now()
      where id = v_stat_id;
+
+    -- propagate up to parent: ensure row exists and accumulate F1 volume
+    select parent_id into v_parent_id from public.users where id = p_user_id;
+    if v_parent_id is not null then
+        insert into monthly_stats (id, user_id, month, f1_sales_volume, last_updated)
+        values (v_parent_id::text || '_' || p_month, v_parent_id, p_month, v_total_vol, now())
+        on conflict (id) do update
+          set f1_sales_volume = monthly_stats.f1_sales_volume + excluded.f1_sales_volume,
+              last_updated = now();
+        call recalculate_monthly_stats(v_parent_id, p_month);
+    end if;
 end;
 $$;
 
@@ -252,12 +264,14 @@ begin
         v_month := to_char(new.created_at, 'YYYY-MM');
         v_stat_id := new.user_id::text || '_' || v_month;
 
+        -- Upsert seller row (personal volume)
         insert into monthly_stats (id, user_id, month, personal_sales_volume, last_updated)
         values (v_stat_id, new.user_id, v_month, new.amount, now())
         on conflict (id) do update
         set personal_sales_volume = monthly_stats.personal_sales_volume + excluded.personal_sales_volume,
             last_updated = now();
 
+        -- Recalculate chain (also upserts parent rows and F1 volume)
         call recalculate_monthly_stats(new.user_id, v_month);
     end if;
     return new;

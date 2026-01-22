@@ -191,7 +191,12 @@ BEGIN
     SELECT parent_id INTO v_parent_id FROM users WHERE id = p_user_id;
     
     IF v_parent_id IS NOT NULL THEN
-        -- In a real implementation, you would update the parent's "Downline Volume" here before calling calc
+        -- Ensure parent row exists and f1 volume increments before recalculation
+        INSERT INTO monthly_stats (id, user_id, month, f1_sales_volume, last_updated)
+        VALUES (v_parent_id || '_' || p_month, v_parent_id, p_month, v_total_vol, NOW())
+        ON CONFLICT (id) DO UPDATE 
+          SET f1_sales_volume = monthly_stats.f1_sales_volume + EXCLUDED.f1_sales_volume,
+              last_updated = NOW();
         CALL recalculate_monthly_stats(v_parent_id, p_month);
     END IF;
 END;
@@ -210,14 +215,14 @@ BEGIN
         v_month := to_char(NEW.created_at, 'YYYY-MM');
         v_stat_id := NEW.user_id || '_' || v_month;
 
-        -- 1. Upsert Initial Volume
+        -- 1. Upsert Initial Volume for seller
         INSERT INTO monthly_stats (id, user_id, month, personal_sales_volume, last_updated)
         VALUES (v_stat_id, NEW.user_id, v_month, NEW.amount, NOW())
         ON CONFLICT (id) DO UPDATE 
         SET personal_sales_volume = monthly_stats.personal_sales_volume + EXCLUDED.personal_sales_volume,
             last_updated = NOW();
 
-        -- 2. Trigger Recalculation Chain
+        -- 2. Trigger Recalculation Chain (will also upsert parent rows)
         CALL recalculate_monthly_stats(NEW.user_id, v_month);
     END IF;
     RETURN NEW;

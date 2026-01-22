@@ -1,149 +1,99 @@
-# Data Management Instructions
+# Updating Supabase Monthly Stats Trigger (Parent Upsert + F1 Volume)
 
-This guide explains how to populate the RT Commission Dashboard database with users and transactions, ensuring the automatic commission logic works correctly.
+This guide updates the Supabase trigger/procedure so that when a child user records their first retail sale, the parent’s `monthly_stats` row is auto-created (if missing) and `f1_sales_volume` is accumulated before recalculation.
 
-**Database**: Uses configurable filename from `config.yaml` (default: `rt_commission_dashboard.db`)
+## Prerequisites
+- You are the project owner in Supabase.
+- Your hierarchy is stored in `public.users` (with `parent_id`), and `monthly_stats.user_id` and `transactions.user_id` reference `public.users(id)`.
+  - If you instead use `public.profiles` for the hierarchy, replace `public.users` with `public.profiles` in the SQL below before running.
+- You have access to the Supabase SQL Editor.
 
-## 1. User Management (Roles & Hierarchy)
-
-To create a valid affiliate tree, you must link users via `parent_id`.
-
-### Roles
-*   `admin`: Super Admin (Views all data).
-*   `affiliate`: Agency/Partner (Deep hierarchy).
-*   `ctv`: Collaborator (Leaf nodes, usually focused on sales).
-
-### SQL Example
-```sql
--- Create Root Admin
-INSERT INTO users (id, email, role, full_name, parent_id) 
-VALUES ('u_admin', 'admin@rt.local', 'admin', 'Super Admin', NULL);
-
--- Create Level 1 Affiliate (Directly under Admin)
-INSERT INTO users (id, email, role, full_name, parent_id) 
-VALUES ('u_aff1', 'daily1@rt.local', 'affiliate', 'Đại lý A', 'u_admin');
-
--- Create Level 2 CTV (Under Affiliate)
-INSERT INTO users (id, email, role, full_name, parent_id) 
-VALUES ('u_ctv1', 'ctv1@rt.local', 'ctv', 'CTV X', 'u_aff1');
-
--- Note: Email domains are configurable in config.yaml
-```
-
----
-
-## 2. Transaction Flow
-
-### Retail Sales (Triggers Commissions)
-Use the python method `db.create_retail_sale()` to ensure commissions are generated. If inserting manually via SQL, you **MUST** also calculate and insert the commission rows yourself.
-
-**Recommended: Use Python Shell**
-```bash
-uv run python
-```
-```python
-from rt_commission_dashboard.core.db_handler import DBHandler
-db = DBHandler()
-
-# Create a $1000 sale for CTV1
-# This automatically gives commissions to upline based on config.yaml rates
-# This automatically gives commissions to upline based on monthly volume (Differential)
-# Example: Upline (Tier 22%) - Seller (Tier 20%) = 2% Commission
-db.create_retail_sale('u_ctv1', 1000.00, {'product': 'Giày Nike', 'customer': 'Mr. Long'})
-```
-
-### Manual Transactions (Bonuses/Adjustments)
-For non-automated transactions like KPI Rewards, insert directly via SQL or a future Admin UI.
-
-**SQL Example (KPI Reward)**
-```sql
-INSERT INTO transactions (id, user_id, amount, type, status, created_at)
-VALUES (
-    'tx_bonus_001', 
-    'u_aff1', 
-    5000.00, 
-    'kpi_reward', 
-    'approved', 
-    CURRENT_TIMESTAMP
-);
-```
-
----
-
-## 3. Commission Logic Reference
-
-**Note**: Commission rates are configurable in `config.yaml`
-
-### Volume-Based Tier System
-Commission rates are now determined by **Total Monthly Sales** (Personal + F1).
-
-| Monthly Sales | Rate |
-| :--- | :--- |
-| > 0 | **20%** |
-| > 200M | **22%** |
-| > 400M | **25%** |
-| > 1B | **30%** |
-| > 2B | **35%** |
-
-The system automatically calculates the **differential** between upline and downline rates.
-
-### Customizing Tiers
-Edit `config.yaml` to change thresholds:
-```yaml
-commission:
-  tiers:
-    - {threshold: 0, rate: 0.15}           # Base rate 15%
-    - {threshold: 100000000, rate: 0.20}   # > 100M: 20%
-```
-
-### Shared Opportunity (Co-Selling)
-When a sale is shared (e.g., User A is the "Sharer" and User B is the "Receiver"):
-1.  **Volume for Tier Ranking**:
-    *   **Sharer (User A)**: Gets **100% of the sale amount** counted toward their monthly tier ranking.
-    *   **Receiver (User B)**: Gets **0% volume credit** for tier ranking (does not count).
-2.  **Commission Split**: Both users earn commission on **50% of the sale value** using their respective tier rates:
-    *   **Sharer**: Commission = (Sharer's Tier Rate) × 50% × Sale Amount
-    *   **Receiver**: Commission = (Receiver's Tier Rate) × 50% × Sale Amount
-3.  **Upline**: The upline of *each* user earns differential commission based on that user's respective volumes and tiers.
-
-### Inactive User Logic (The "4% Rule")
-*   **Condition**: If a user has **0 Personal Sales** in the current month (excluding received shares).
-*   **Penalty**: Their commission rate is capped at **4%**.
-*   **Effect**: 
-    *   Direct Sales: 4% commission.
-    *   Shared/Received: 4% commission on the split amount.
-    *   **Override**: They generally do *not* receive override commissions from downlines if they are inactive (unless specific config allows).
-
----
-
-## 4. Database Schema Reference
-
-### `monthly_stats` Table
-This table stores the stateful monthly performance for each user, allowing for instant reporting and historical snapshots.
+## Steps (run in Supabase SQL Editor)
+1) Open your Supabase project → SQL → New Query.
+2) Paste and run the SQL below (adjust table names if your hierarchy uses `profiles`):
 
 ```sql
-CREATE TABLE monthly_stats (
-    id TEXT PRIMARY KEY,          -- Format: {user_id}_{YYYY-MM}
-    user_id TEXT NOT NULL,
-    month TEXT NOT NULL,          -- Format: YYYY-MM
-    
-    -- Volume Columns (Used for Tier Ranking)
-    personal_sales_volume REAL,   -- Direct Retail Sales
-    shared_out_volume REAL,       -- Volume shared with others (50% of sale)
-    received_volume REAL,         -- Volume received from others (50% of sale)
-    f1_sales_volume REAL,         -- Volume from direct downlines (for future use)
-    
-    -- Financial Columns
-    tier_rate REAL,               -- Effective Commission Rate (e.g. 0.20, 0.22)
-    comm_direct REAL,             -- Commission from Personal Sales
-    comm_shared REAL,             -- Commission from Shared-Out sales
-    comm_received REAL,           -- Commission from Received sales
-    comm_override REAL,           -- Commission from Downline differentials
-    total_commission REAL,        -- Total Earnings
-    
-    last_updated DATETIME
-);
+-- Helper: tier rate
+create or replace function public.get_commission_rate(volume numeric)
+returns numeric as $$
+begin
+    if volume > 2000000000 then return 0.35;
+    elsif volume > 1000000000 then return 0.30;
+    elsif volume > 400000000 then return 0.25;
+    elsif volume > 200000000 then return 0.22;
+    else return 0.20;
+    end if;
+end;
+$$ language plpgsql immutable;
+
+-- Recalculate stats; upsert parent row + F1 volume, then recurse
+create or replace procedure public.recalculate_monthly_stats(p_user_id uuid, p_month text)
+language plpgsql as $$
+declare
+    v_total_vol numeric;
+    v_new_rate numeric;
+    v_stat_id text := p_user_id::text || '_' || p_month;
+    v_parent_id uuid;
+begin
+    select coalesce(personal_sales_volume + shared_out_volume + received_volume, 0)
+      into v_total_vol
+      from public.monthly_stats
+     where id = v_stat_id;
+
+    v_new_rate := get_commission_rate(coalesce(v_total_vol,0));
+
+    update public.monthly_stats
+       set tier_rate = v_new_rate,
+           total_commission = (personal_sales_volume * v_new_rate),
+           last_updated = now()
+     where id = v_stat_id;
+
+    -- propagate to parent: ensure row exists and add F1 volume
+    select parent_id into v_parent_id from public.users where id = p_user_id;
+    if v_parent_id is not null then
+        insert into public.monthly_stats (id, user_id, month, f1_sales_volume, last_updated)
+        values (v_parent_id::text || '_' || p_month, v_parent_id, p_month, v_total_vol, now())
+        on conflict (id) do update
+          set f1_sales_volume = public.monthly_stats.f1_sales_volume + excluded.f1_sales_volume,
+              last_updated = now();
+        call public.recalculate_monthly_stats(v_parent_id, p_month);
+    end if;
+end;
+$$;
+
+-- Trigger function: upsert seller row, then recurse (which handles parents)
+create or replace function public.handle_new_transaction()
+returns trigger as $$
+declare
+    v_month text;
+    v_stat_id text;
+begin
+    if new.type = 'retail_sales' then
+        v_month := to_char(new.created_at, 'YYYY-MM');
+        v_stat_id := new.user_id::text || '_' || v_month;
+
+        insert into public.monthly_stats (id, user_id, month, personal_sales_volume, last_updated)
+        values (v_stat_id, new.user_id, v_month, new.amount, now())
+        on conflict (id) do update
+        set personal_sales_volume = public.monthly_stats.personal_sales_volume + excluded.personal_sales_volume,
+            last_updated = now();
+
+        call public.recalculate_monthly_stats(new.user_id, v_month);
+    end if;
+    return new;
+end;
+$$ language plpgsql;
+
+-- Recreate trigger to use the updated function
+drop trigger if exists on_transaction_insert on public.transactions;
+create trigger on_transaction_insert
+after insert on public.transactions
+for each row execute function public.handle_new_transaction();
 ```
 
-**Key Note**: `tier_rate` is dynamically updated every time a transaction occurs, potentially recalculating `comm_direct` and `comm_override` for the entire month to reflect the new rate.
+3) Click “Run”.
 
+## Notes
+- This only fires for `transactions.type = 'retail_sales'`. Add more logic if you want other types to affect stats.
+- If you store the hierarchy in `public.profiles` instead of `public.users`, swap the parent lookup to `public.profiles` and ensure FKs match.
+- Existing data is untouched; future inserts will upsert parent rows and accumulate `f1_sales_volume`.
