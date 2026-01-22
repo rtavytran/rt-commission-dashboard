@@ -123,7 +123,7 @@ serve(async (req: Request) => {
 
   // Only allow POST requests
   if (req.method !== 'POST') {
-    return corsResponse({ error: 'Method not allowed' }, 405)
+    return corsResponse({ error: 'Method not allowed', detail: 'Use POST' }, 405)
   }
 
   try {
@@ -131,13 +131,15 @@ serve(async (req: Request) => {
     const authHeader = req.headers.get('Authorization')
 
     if (!authHeader) {
-      console.error('Missing Authorization header')
-      return corsResponse({ error: 'Missing Authorization header' }, 401)
+      const msg = 'Missing Authorization header'
+      console.error(msg)
+      return corsResponse({ error: 'Unauthorized', detail: msg }, 401)
     }
 
     if (!authHeader.startsWith('Bearer ')) {
-      console.error('Invalid Authorization format')
-      return corsResponse({ error: 'Invalid Authorization format. Expected: Bearer <token>' }, 401)
+      const msg = 'Invalid Authorization format. Expected: Bearer <token>'
+      console.error(msg)
+      return corsResponse({ error: 'Unauthorized', detail: msg }, 401)
     }
 
     const token = authHeader.replace('Bearer ', '')
@@ -146,7 +148,9 @@ serve(async (req: Request) => {
     const authResult = await validateToken(token)
 
     if (!authResult) {
-      return corsResponse({ error: 'Invalid or expired token' }, 401)
+      const msg = 'Invalid or expired token'
+      console.error(msg)
+      return corsResponse({ error: 'Unauthorized', detail: msg }, 401)
     }
 
     console.log(`[${new Date().toISOString()}] Authenticated request - Email: ${authResult.email}, Method: ${authResult.method}`)
@@ -185,7 +189,7 @@ serve(async (req: Request) => {
 
       if (error) {
         console.error('User lookup error:', error)
-        return corsResponse({ error: 'Failed to lookup user', details: error.message }, 500)
+        return corsResponse({ error: 'User lookup failed', detail: error.message }, 500)
       }
 
       user = data
@@ -194,8 +198,8 @@ serve(async (req: Request) => {
     if (!user) {
       console.error(`User not found in database: ${authResult.email}`)
       return corsResponse({
-        error: 'User not found in database',
-        message: 'Your account may not be set up yet. Please contact support.',
+        error: 'User not found',
+        detail: 'Account not provisioned in users table',
         email: authResult.email
       }, 404)
     }
@@ -232,7 +236,7 @@ serve(async (req: Request) => {
 
     if (txError) {
       console.error('Transaction query error:', txError)
-      return corsResponse({ error: 'Failed to fetch transactions', details: txError.message }, 500)
+      return corsResponse({ error: 'Failed to fetch transactions', detail: txError.message }, 500)
     }
 
     // ===== STEP 6: Fetch monthly stats =====
@@ -245,7 +249,7 @@ serve(async (req: Request) => {
 
     if (statsError) {
       console.error('Monthly stats query error:', statsError)
-      return corsResponse({ error: 'Failed to fetch monthly stats', details: statsError.message }, 500)
+      return corsResponse({ error: 'Failed to fetch monthly stats', detail: statsError.message }, 500)
     }
 
     // ===== STEP 7: Calculate summary metrics =====
@@ -300,7 +304,7 @@ serve(async (req: Request) => {
 
     return corsResponse({
       error: 'Internal server error',
-      message: 'An unexpected error occurred. Please try again later.'
+      detail: error instanceof Error ? error.message : 'Unexpected error'
     }, 500)
   }
 })
@@ -318,7 +322,7 @@ async function validateToken(token: string): Promise<AuthResult | null> {
       return keycloakResult
     }
   } catch (error) {
-    console.log('Not a Keycloak JWT, trying Supabase:', error.message)
+    console.log('Not a Keycloak JWT, trying Supabase:', (error as Error)?.message)
   }
 
   // Try Supabase JWT (for OTP flow)
@@ -328,7 +332,7 @@ async function validateToken(token: string): Promise<AuthResult | null> {
       return supabaseResult
     }
   } catch (error) {
-    console.log('Not a Supabase JWT:', error.message)
+    console.log('Not a Supabase JWT:', (error as Error)?.message)
   }
 
   return null
