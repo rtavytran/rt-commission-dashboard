@@ -5,6 +5,7 @@ import httpx
 from rt_commission_dashboard.ui.theme import Theme
 from rt_commission_dashboard.core.db_handler import get_db_handler
 from rt_commission_dashboard.core.config import config
+from rt_commission_dashboard.core.i18n import t
 
 def login_page():
     Theme.apply_global_styles()
@@ -12,15 +13,15 @@ def login_page():
     # Center container
     with ui.column().classes('absolute-center w-full max-w-sm'):
         # Logo/Brand
-        ui.label('RT Commission Dashboard').classes('text-3xl font-bold text-center w-full mb-8')
+        ui.label(t('app.name')).classes('text-3xl font-bold text-center w-full mb-8')
 
         with Theme.card():
-            ui.label('Sign In').classes('text-xl font-bold mb-6 text-center w-full')
+            ui.label(t('auth.sign_in')).classes('text-xl font-bold mb-6 text-center w-full')
 
             # Tabs for Password and OTP login
             with ui.tabs().classes('w-full') as tabs:
-                password_tab = ui.tab('Password')
-                otp_tab = ui.tab('OTP Login')
+                password_tab = ui.tab(t('auth.password'))
+                otp_tab = ui.tab(t('auth.otp_login'))
 
             # Helper functions
             def get_base_url():
@@ -113,8 +114,8 @@ def login_page():
             with ui.tab_panels(tabs, value=password_tab).classes('w-full'):
                 # Password Login Tab
                 with ui.tab_panel(password_tab):
-                    email = ui.input('Email').props('outlined dense type=email').classes('w-full mb-4 rt-input')
-                    password = ui.input('Password').props('outlined dense type=password').classes('w-full mb-4 rt-input')
+                    email = ui.input(t('auth.email')).props('outlined dense type=email').classes('w-full mb-4 rt-input')
+                    password = ui.input(t('auth.password')).props('outlined dense type=password').classes('w-full mb-4 rt-input')
 
                     def handle_login():
                         if not email.value:
@@ -160,11 +161,11 @@ def login_page():
                         else:
                             ui.notify('Invalid email (Try: admin@rt.local)', type='negative')
 
-                    ui.button('Login', on_click=handle_login).props('unelevated color=indigo-600').classes('w-full h-10')
+                    ui.button(t('auth.login'), on_click=handle_login).props('unelevated color=indigo-600').classes('w-full h-10')
 
                 # OTP Login Tab
                 with ui.tab_panel(otp_tab):
-                    email_otp = ui.input('Email').props('outlined dense type=email').classes('w-full mb-4 rt-input')
+                    email_otp = ui.input(t('auth.email')).props('outlined dense type=email').classes('w-full mb-4 rt-input')
 
                     # OTP cooldown state
                     otp_state = {'cooldown': 0}
@@ -200,7 +201,7 @@ def login_page():
                         if client is None:
                             return
                         base_url = get_base_url()
-                        email_redirect = f"{base_url}/login"
+                        email_redirect = f"{base_url}/email-confirmed"
                         try:
                             client.auth.sign_in_with_otp({
                                 'email': email_otp.value,
@@ -217,9 +218,9 @@ def login_page():
                         except Exception as exc:  # noqa: BLE001
                             ui.notify(f'Failed to send OTP: {exc}', type='negative')
 
-                    send_btn = ui.button('Send OTP Code', on_click=send_otp).props('outline color=indigo-600').classes('w-full h-10 mb-4')
+                    send_btn = ui.button(t('auth.send_otp'), on_click=send_otp).props('outline color=indigo-600').classes('w-full h-10 mb-4')
 
-                    otp_code = ui.input('OTP Code').props('outlined dense inputmode=numeric pattern=\\d* maxlength=6').classes('w-full mb-4 rt-input')
+                    otp_code = ui.input(t('auth.otp_code')).props('outlined dense inputmode=numeric pattern=\\d* maxlength=6').classes('w-full mb-4 rt-input')
 
                     def handle_otp_login():
                         if not email_otp.value:
@@ -244,6 +245,6 @@ def login_page():
                         except Exception as exc:  # noqa: BLE001
                             ui.notify(f'OTP verification failed: {exc}', type='negative')
 
-                    ui.button('Login with OTP', on_click=handle_otp_login).props('unelevated color=indigo-600').classes('w-full h-10')
+                    ui.button(t('auth.login_with_otp'), on_click=handle_otp_login).props('unelevated color=indigo-600').classes('w-full h-10')
 
-            ui.link('Create account', '/signup').classes('block text-center mt-3 text-sm text-indigo-500')
+            ui.link(t('auth.create_account_link'), '/signup').classes('block text-center mt-3 text-sm text-indigo-500')

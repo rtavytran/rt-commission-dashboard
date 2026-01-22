@@ -106,7 +106,22 @@ Stateful snapshot of monthly performance. Used for dashboards and computing tier
 | `comm_received` | `REAL` | `numeric` | Earnings from Received Sales. |
 | `comm_override` | `REAL` | `numeric` | Earnings from Downline Differential. |
 | `total_commission` | `REAL` | `numeric` | Total Earnings. |
-| `last_updated` | `DATETIME` | `timestamptz` | Last calculation timestamp. |
+
+### 4. Products (`products`, Supabase only)
+Synced from Shopify. optimized for Fuzzy Search.
+
+| Column | Type (Supabase) | Description |
+| :--- | :--- | :--- |
+| `id` | `text` | Primary Key (Shopify Product ID). |
+| `title` | `text` | Product Name (Indexed for Search). |
+| `body_html` | `text` | Description. |
+| `vendor` | `text` | Brand/Vendor. |
+| `product_type` | `text` | Category. |
+| `status` | `text` | `active`, `archived`, `draft`. |
+| `variants` | `jsonb` | List of variants (SKU, Price, Option). |
+| `images` | `jsonb` | List of images. |
+| `created_at` | `timestamptz` | Shopify creation time. |
+| `updated_at` | `timestamptz` | Shopify update time. |
 
 ## 4. Data Lifecycle & Operations
 
@@ -215,4 +230,39 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER on_transaction_insert
 AFTER INSERT ON transactions
 FOR EACH ROW EXECUTE FUNCTION handle_new_transaction();
+```
+
+### 5. Product Search Logic (Fuzzy Matching)
+To enable robust product search handling typos (e.g. "sunghen" -> "SUNGEN"), use `pg_trgm`.
+
+#### 1. Enable Extension
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+```
+
+#### 2. Create Index
+```sql
+CREATE INDEX IF NOT EXISTS idx_products_name_trgm ON public.products USING gin (title gin_trgm_ops);
+```
+
+#### 3. RPC Function: `search_products_fuzzy`
+Call this from Kestra/App via `supabase.rpc('search_products_fuzzy', { 'search_term': '...' })`.
+
+```sql
+CREATE OR REPLACE FUNCTION search_products_fuzzy(search_term TEXT)
+RETURNS SETOF products AS $$
+BEGIN
+    RETURN QUERY
+    SELECT *
+    FROM products
+    WHERE 
+        title ILIKE '%' || search_term || '%'
+        OR
+        similarity(title, search_term) > 0.3
+    ORDER BY 
+        similarity(title, search_term) DESC, 
+        title ASC
+    LIMIT 10;
+END;
+$$ LANGUAGE plpgsql;
 ```

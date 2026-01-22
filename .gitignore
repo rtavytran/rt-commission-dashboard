@@ -70,6 +70,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.bak
+tmpclaude-*
 
 # Development scripts (not part of package)
 scripts/

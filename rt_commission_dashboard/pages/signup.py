@@ -4,20 +4,21 @@ from supabase import create_client
 import httpx
 from rt_commission_dashboard.ui.theme import Theme
 from rt_commission_dashboard.core.config import config
+from rt_commission_dashboard.core.i18n import t
 
 
 def signup_page():
     Theme.apply_global_styles()
 
     with ui.column().classes('absolute-center w-full max-w-sm'):
-        ui.label('RT Commission Dashboard').classes('text-3xl font-bold text-center w-full mb-8')
+        ui.label(t('app.name')).classes('text-3xl font-bold text-center w-full mb-8')
 
         with Theme.card():
-            ui.label('Create Account').classes('text-xl font-bold mb-6 text-center w-full')
+            ui.label(t('auth.create_account')).classes('text-xl font-bold mb-6 text-center w-full')
 
-            email = ui.input('Email').props('outlined dense type=email').classes('w-full mb-4 rt-input')
-            password = ui.input('Password').props('outlined dense type=password').classes('w-full mb-4 rt-input')
-            confirm = ui.input('Confirm Password').props('outlined dense type=password').classes('w-full mb-6 rt-input')
+            email = ui.input(t('auth.email')).props('outlined dense type=email').classes('w-full mb-4 rt-input')
+            password = ui.input(t('auth.password')).props('outlined dense type=password').classes('w-full mb-4 rt-input')
+            confirm = ui.input(t('auth.confirm_password')).props('outlined dense type=password').classes('w-full mb-6 rt-input')
 
             def get_base_url():
                 """Resolve the base URL to send in Supabase email redirects."""
@@ -56,7 +57,7 @@ def signup_page():
                 if client is None:
                     return
                 base_url = get_base_url()
-                email_redirect = f"{base_url}/login"
+                email_redirect = f"{base_url}/email-confirmed"
                 try:
                     resp = client.auth.sign_up(
                         {
@@ -78,5 +79,5 @@ def signup_page():
                 except Exception as exc:  # noqa: BLE001
                     ui.notify(f'Signup failed: {exc}', type='negative')
 
-            ui.button('Sign Up', on_click=handle_signup).props('unelevated color=indigo-600').classes('w-full h-10 mb-4')
-            ui.link('Back to Login', '/login').classes('block text-center mt-3 text-sm text-indigo-500')
+            ui.button(t('auth.sign_up'), on_click=handle_signup).props('unelevated color=indigo-600').classes('w-full h-10 mb-4')
+            ui.link(t('auth.back_to_login'), '/login').classes('block text-center mt-3 text-sm text-indigo-500')

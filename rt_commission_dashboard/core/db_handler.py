@@ -686,24 +686,24 @@ class DBHandler:
             ''', tuple(params))
             return cursor.fetchall()
 
-    def get_transactions_filtered(self, user_id, month=None, year=None, type_filter=None):
-        """Fetches transactions with optional filters."""
-        # Check user role
-        with self._get_connection() as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute('SELECT role FROM users WHERE id = ?', (user_id,))
-            row = cursor.fetchone()
-            role = row['role'] if row else 'ctv'
+    def get_transactions_filtered(self, user_id, month=None, year=None, type_filter=None, is_admin=False):
+        """Fetches transactions with optional filters.
 
-        # If Admin, show ALL transactions (unless filtered safely?)
-        # Issue: The UI might need to know if it's admin mode.
+        Args:
+            user_id: Filter by this user. If None and is_admin=True, returns all transactions.
+            is_admin: If True and user_id is None, skips user filtering (admin sees all).
+        """
         params = []
-        if role == 'admin':
+        if user_id is None and is_admin:
+            # Admin sees all transactions
             query = "SELECT * FROM transactions WHERE 1=1"
+        elif user_id is not None:
+            # Filter by user_id OR shared_with_id
+            query = "SELECT * FROM transactions WHERE (user_id = ? OR shared_with_id = ?)"
+            params.extend([user_id, user_id])
         else:
-            query = "SELECT * FROM transactions WHERE user_id = ?"
-            params.append(user_id)
+            # Non-admin with no user_id sees nothing
+            return []
         
         if month and year:
             query += " AND strftime('%m', created_at) = ? AND strftime('%Y', created_at) = ?"

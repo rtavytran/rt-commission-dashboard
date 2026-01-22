@@ -26,16 +26,20 @@ def dashboard_page():
     # --- Filter Logic ---
     from datetime import datetime
     current_year = datetime.now().year
-    
+
     # Get viewable users (Self + Downline, or All if Admin), sorted by label
-    viewable_users = sorted(
-        db.get_viewable_users(data_user_id, user.get('role', 'ctv')) if data_user_id else [],
-        key=lambda u: u['label'].lower()
-    )
+    # For admin, always fetch all users even if data_user_id is None
+    if is_admin or data_user_id:
+        viewable_users = sorted(
+            db.get_viewable_users(data_user_id, user.get('role', 'ctv')),
+            key=lambda u: u['label'].lower()
+        )
+    else:
+        viewable_users = []
     user_options = {u['id']: u['label'] for u in viewable_users}
 
     if is_admin:
-        user_options = {'global': f"Global Stats (Admin)", **user_options}
+        user_options = {'global': t('dash.global_stats'), **user_options}
         default_target = 'global'
     else:
         default_target = data_user_id
@@ -59,10 +63,10 @@ def dashboard_page():
                 _kpi_card(t('dash.new_customers'), str(kpis['new_customers']), 'person_add', 'orange')
                 _kpi_card(t('dash.network_size'), str(kpis['network_size']), 'hub', 'purple')
             with ui.row().classes('w-full gap-4'):
-                _kpi_card('Ranking Volume', format_currency(kpis.get('ranking_volume', 0)), 'stacked_line_chart', 'indigo')
-                _kpi_card('Tier Rate', f"{kpis.get('tier_rate', 0)*100:.2f}%", 'trending_up', 'cyan')
-                _kpi_card('Shared-Out Volume', format_currency(kpis.get('shared_out_amount', 0)), 'north_east', 'teal')
-                _kpi_card('Shared-Received Volume', format_currency(kpis.get('shared_received_amount', 0)), 'south_west', 'pink')
+                _kpi_card(t('dash.ranking_volume'), format_currency(kpis.get('ranking_volume', 0)), 'stacked_line_chart', 'indigo')
+                _kpi_card(t('dash.tier_rate'), f"{kpis.get('tier_rate', 0)*100:.2f}%", 'trending_up', 'cyan')
+                _kpi_card(t('dash.shared_out'), format_currency(kpis.get('shared_out_amount', 0)), 'north_east', 'teal')
+                _kpi_card(t('dash.shared_received'), format_currency(kpis.get('shared_received_amount', 0)), 'south_west', 'pink')
 
             # --- Commission Breakdown ---
             ui.label(t('dash.comm_breakdown')).classes('text-lg font-bold mt-6 mb-2 rt-subtitle')
@@ -108,8 +112,9 @@ def dashboard_page():
                     options=user_options,
                     value=default_target,
                     label=t('nav.users'),
-                    on_change=lambda: refresh_all()
-                ).classes('w-96 rt-input text-base').props('outlined dense use-input fill-input input-debounce=0 filter clearable popup-content-class=rt-input text-primary behavior=menu')
+                    on_change=lambda: refresh_all(),
+                    with_input=True,
+                ).classes('w-96 rt-input text-base').props('outlined dense popup-content-class=rt-input behavior=menu')
 
         # 2. Year Selector
         year_select = ui.select(
@@ -119,15 +124,17 @@ def dashboard_page():
             on_change=lambda: refresh_all()
         ).classes('w-32 rt-input').props('outlined dense popup-content-class=rt-input behavior=menu')
 
-        # 3. Month Selector
+        # 3. Month Selector with translations
+        month_keys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+        month_options = {f"{m:02d}": t(f'month.{month_keys[m-1]}') for m in range(1, 13)}
         month_select = ui.select(
-            options={f"{m:02d}": datetime(2000, m, 1).strftime('%B') for m in range(1, 13)},
+            options=month_options,
             value=None,
             label=t('rep.month'),
             on_change=lambda: refresh_all()
         ).classes('w-44 rt-input').props('outlined dense clearable popup-content-class=rt-input behavior=menu')
 
-        ui.button('Reload', on_click=lambda: refresh_all()).props('unelevated color=indigo-600').classes('h-10')
+        ui.button(t('common.reload'), on_click=lambda: refresh_all()).props('unelevated color=indigo-600').classes('h-10')
         def refresh_all():
             t_id = target_select.value if target_select else default_target
             m = month_select.value

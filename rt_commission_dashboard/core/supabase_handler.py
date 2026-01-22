@@ -712,33 +712,22 @@ class SupabaseHandler:
         # Return as sorted list of tuples
         return sorted(by_month.items())
 
-    def get_transactions_filtered(self, user_id: str, month: Optional[int] = None, year: Optional[int] = None, type_filter: Optional[str] = None) -> List[Dict]:
-        """Fetch transactions with optional filters."""
+    def get_transactions_filtered(self, user_id: Optional[str], month: Optional[int] = None, year: Optional[int] = None, type_filter: Optional[str] = None, is_admin: bool = False) -> List[Dict]:
+        """Fetch transactions with optional filters.
+
+        Args:
+            user_id: Filter by this user. If None and is_admin=True, returns all transactions.
+            is_admin: If True and user_id is None, skips user filtering (admin sees all).
+        """
         query = self.client.table('transactions').select('*')
 
-        # Role check to allow admins to see all? 
-        # The calling UI typically passes specific user_id. 
-        # If user_id is passed, we filter by it.
-        # If the requirement is "Admin sees all", the caller should handle passing the right user_id or we check role here.
-        # Assuming typical usage: filtered by user_id unless explicit logic elsewhere.
-        # But wait, `db_handler.py` had logic: if role is admin, show 1=1.
-        
-        # We need to check the role of the requesting user. 
-        # This method signature doesn't take "requesting_user_id". 
-        # It takes `user_id` which implies "Transactions OF user_id".
-        # However, `db_handler.py` used `user_id` as the "CurrentUser". 
-        # Let's check `db_handler.py` again.
-        # Yes: `cursor.execute('SELECT role FROM users WHERE id = ?', (user_id,))` -> `if role == 'admin': query = "SELECT * ..."`
-        # So `user_id` IS the viewer.
-        
-        viewer_role = 'ctv'
-        viewer_res = self.client.table('users').select('role').eq('id', user_id).execute()
-        if viewer_res.data:
-            viewer_role = viewer_res.data[0]['role']
-            
-        if viewer_role != 'admin':
+        # User filtering: admin with user_id=None sees all, otherwise filter by user
+        if user_id is not None:
             # Filter by user_id OR shared_with_id
             query = query.or_(f"user_id.eq.{user_id},shared_with_id.eq.{user_id}")
+        elif not is_admin:
+            # Non-admin with no user_id should see nothing
+            return []
         
         # Date Filter
         # Supabase doesn't support complex date part filtering easily in one go without custom functions or ranges.

@@ -44,8 +44,8 @@ def users_page():
         # Custom slot not needed for basic text, but we could add chips in future.
         # Search Filter
         with ui.row().classes('w-full mb-4 justify-end'):
-            search = ui.input(placeholder='Search...').props('outlined dense append-icon=search').classes('w-64 rt-input')
-            ui.button('Reload', on_click=lambda: table.update_rows(load_rows())).props('unelevated color=indigo-600').classes('ml-2')
+            search = ui.input(placeholder=t('common.search')).props('outlined dense append-icon=search').classes('w-64 rt-input')
+            ui.button(t('common.reload'), on_click=lambda: table.update_rows(load_rows())).props('unelevated color=indigo-600').classes('ml-2')
 
         table = ui.table(
             columns=columns, 

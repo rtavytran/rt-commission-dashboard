@@ -3,6 +3,7 @@ from rt_commission_dashboard.ui.theme import Theme
 from rt_commission_dashboard.ui.layout import layout
 from rt_commission_dashboard.core.config import config
 from rt_commission_dashboard.core.paths import get_config_path
+from rt_commission_dashboard.core.i18n import t
 import yaml
 import os
 
@@ -13,13 +14,24 @@ def settings_page():
     # Title
     with ui.row().classes('items-center mb-6'):
         ui.icon('settings', size='md', color=Theme.SECONDARY)
-        Theme.title('Settings')
+        Theme.title(t('settings.title'))
 
-    Theme.subtitle('Configure database connection and application settings')
+    Theme.subtitle(t('settings.subtitle'))
+
+    def normalize_supabase_url(url_or_id: str) -> str:
+        """Convert project ID or URL to full Supabase URL."""
+        if not url_or_id:
+            return ''
+        url_or_id = url_or_id.strip()
+        # Already a full URL
+        if url_or_id.startswith('http://') or url_or_id.startswith('https://'):
+            return url_or_id.rstrip('/')
+        # Just project ID - convert to URL
+        return f'https://{url_or_id}.supabase.co'
 
     # Database Settings Card
     with Theme.card():
-        ui.label('Database Configuration').classes('text-xl font-bold mb-4')
+        ui.label(t('settings.db_config')).classes('text-xl font-bold mb-4')
 
         # Load current settings from the correct path
         settings_file = get_config_path()
@@ -39,29 +51,29 @@ def settings_page():
         db_type_select = ui.select(
             options={'sqlite': 'SQLite (Local)', 'supabase': 'Supabase (Cloud)'},
             value=current_db_type,
-            label='Database Type'
+            label=t('setup.db_type')
         ).props('outlined dense').classes('w-full mb-4 rt-input')
 
         # Supabase Configuration Container
         supabase_container = ui.column().classes('w-full gap-4')
 
         with supabase_container:
-            ui.label('Supabase Configuration').classes('text-lg font-semibold mb-2')
+            ui.label(t('settings.supabase_config')).classes('text-lg font-semibold mb-2')
 
             # Get current Supabase settings
             supabase_config = db_config.get('supabase', {})
 
             supabase_url = ui.input(
-                label='Supabase URL',
-                placeholder='https://your-project.supabase.co',
+                label=t('setup.supabase_url'),
+                placeholder=t('setup.supabase_url_hint'),
                 value=supabase_config.get('url', config.get_supabase_url())
-            ).props('outlined dense').classes('w-full rt-input')
+            ).props('outlined stack-label').classes('w-full rt-input')
 
             supabase_anon_key = ui.input(
-                label='Supabase Anon Key',
-                placeholder='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                label=t('setup.supabase_anon_key'),
+                placeholder=t('setup.supabase_anon_key_hint'),
                 value=supabase_config.get('anon_key', config.get_supabase_anon_key())
-            ).props('outlined dense type=password').classes('w-full rt-input')
+            ).props('outlined stack-label type=password').classes('w-full rt-input')
 
         # Show/hide Supabase config based on selection
         def update_visibility():
@@ -76,8 +88,11 @@ def settings_page():
                 # Validate Supabase inputs if selected
                 if db_type_select.value == 'supabase':
                     if not supabase_url.value or not supabase_anon_key.value:
-                        ui.notify('Please enter Supabase URL and Anon Key', type='negative')
+                        ui.notify('Please enter Supabase URL/Project ID and Anon Key', type='negative')
                         return
+
+                # Normalize URL (accept project ID or full URL)
+                normalized_url = normalize_supabase_url(supabase_url.value)
 
                 # Prepare config data
                 new_config = current_settings.copy()
@@ -90,7 +105,7 @@ def settings_page():
 
                 if db_type_select.value == 'supabase':
                     new_config['database']['supabase'] = {
-                        'url': supabase_url.value,
+                        'url': normalized_url,
                         'anon_key': supabase_anon_key.value
                     }
 
@@ -104,7 +119,7 @@ def settings_page():
                 # Update environment variables for immediate effect
                 if db_type_select.value == 'supabase':
                     os.environ['DATABASE_TYPE'] = 'supabase'
-                    os.environ['SUPABASE_URL'] = supabase_url.value
+                    os.environ['SUPABASE_URL'] = normalized_url
                     os.environ['SUPABASE_ANON_KEY'] = supabase_anon_key.value
                 else:
                     os.environ['DATABASE_TYPE'] = 'sqlite'
@@ -122,13 +137,13 @@ def settings_page():
                 ui.notify(f'Error saving settings: {e}', type='negative')
 
         with ui.row().classes('w-full mt-6 gap-4'):
-            ui.button('Save Settings', on_click=save_settings).props('unelevated color=indigo-600')
-            ui.button('Cancel', on_click=lambda: ui.navigate.to('/')).props('flat')
+            ui.button(t('settings.save'), on_click=save_settings).props('unelevated color=indigo-600')
+            ui.button(t('common.cancel'), on_click=lambda: ui.navigate.to('/')).props('flat')
 
     # Information Card
     with Theme.card().classes('mt-6'):
-        ui.label('Important Notes').classes('text-lg font-bold mb-3')
+        ui.label(t('settings.important_notes')).classes('text-lg font-bold mb-3')
         with ui.column().classes('gap-2 rt-muted'):
-            ui.label('• After changing database settings, you must restart the application.')
-            ui.label('• Make sure your Supabase project has the correct schema and tables.')
-            ui.label('• Settings are stored in the config/settings.yaml file.')
+            ui.label('• ' + t('settings.note1'))
+            ui.label('• ' + t('settings.note2'))
+            ui.label('• ' + t('settings.note3'))

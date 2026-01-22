@@ -14,6 +14,7 @@ from rt_commission_dashboard.pages.login import login_page
 from rt_commission_dashboard.pages.setup import setup_page
 from rt_commission_dashboard.pages.signup import signup_page
 from rt_commission_dashboard.pages.check_email import check_email_page
+from rt_commission_dashboard.pages.email_confirmed import email_confirmed_page
 from rt_commission_dashboard.pages.dashboard import dashboard_page
 from rt_commission_dashboard.pages.affiliates import affiliates_page
 from rt_commission_dashboard.pages.reports import reports_page
@@ -38,6 +39,10 @@ def signup_route():
 def check_email_route():
     check_email_page()
 
+@ui.page('/email-confirmed')
+def email_confirmed_route():
+    email_confirmed_page()
+
 from rt_commission_dashboard.pages.users import users_page
 from rt_commission_dashboard.pages.profiles import profiles_page
 
@@ -49,13 +54,13 @@ ui.page('/admin/profiles')(profiles_page)
 ui.page('/admin/settings')(settings_page)
 
 from rt_commission_dashboard.ui.layout import layout
-@ui.page('/admin/contracts')
+from rt_commission_dashboard.core.i18n import t
 
 @ui.page('/admin/contracts')
 @layout
 def admin_contracts_page():
-    ui.label('Contract Management').classes('text-2xl font-bold text-white mb-4')
-    ui.label('Coming Soon in Phase 2').classes('text-gray-400')
+    ui.label(t('contracts.title')).classes('text-2xl font-bold rt-title mb-4')
+    ui.label(t('contracts.coming_soon')).classes('rt-muted')
 
 def main():
     parser = argparse.ArgumentParser(description=config.get_app_title())

@@ -130,6 +130,15 @@ class Theme:
                     border: 1px solid var(--card-border);
                 }
 
+                /* User dropdown menu text (light/dark safe) */
+                .rt-user-menu,
+                .rt-user-menu *,
+                .rt-user-menu__header,
+                .rt-user-menu__item,
+                .rt-user-menu__item .q-item__label {
+                    color: var(--text) !important;
+                }
+
                 .q-table {
                     background: var(--card-bg);
                     color: var(--text);
@@ -200,6 +209,46 @@ class Theme:
 
                 /* Fix pagination select dropdown */
                 .q-table .q-select__dropdown-icon {
+                    color: var(--text) !important;
+                }
+
+                /* Fix search input text color in dark mode */
+                .rt-input input,
+                .rt-input .q-field__native,
+                .rt-input .q-field__input,
+                .q-field--outlined .q-field__native,
+                .q-field--outlined input {
+                    color: var(--text) !important;
+                    caret-color: var(--text) !important;
+                }
+
+                .rt-input input::placeholder,
+                .q-field--outlined input::placeholder {
+                    color: var(--text-muted) !important;
+                    opacity: 0.7;
+                }
+
+                /* Fix select dropdown item display */
+                .q-item__label--caption {
+                    color: var(--text-muted) !important;
+                }
+
+                .q-select__dropdown-icon {
+                    color: var(--text) !important;
+                }
+
+                /* Fix chip/tag display in select */
+                .q-chip {
+                    background: var(--accent-soft) !important;
+                    color: var(--text) !important;
+                }
+
+                /* Fix autocomplete/filter input in select */
+                .q-select .q-field__input {
+                    color: var(--text) !important;
+                }
+
+                .q-select--with-input .q-field__native {
                     color: var(--text) !important;
                 }
             </style>

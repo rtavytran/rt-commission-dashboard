@@ -111,7 +111,7 @@ def layout(content_func):
         # --- Header with Navigation ---
         with ui.header().classes('items-center h-16 px-6'):
             # Logo/Brand
-            ui.label('APP NAGEN').classes('text-xl font-bold tracking-wider')
+            ui.label('APP NAGEN').classes('text-xl font-bold tracking-wider rt-title')
 
             ui.space()
 
@@ -130,10 +130,10 @@ def layout(content_func):
                 # Admin navigation (dropdown)
                 if user['role'] == 'admin':
                     with ui.button(icon='admin_panel_settings').props('flat dense'):
-                        ui.label('Admin').classes('ml-1')
+                        ui.label(t('nav.admin')).classes('ml-1')
                         with ui.menu():
                             ui.menu_item(t('nav.users'), on_click=lambda: ui.navigate.to('/admin/users'))
-                            ui.menu_item('Dashboard Profiles', on_click=lambda: ui.navigate.to('/admin/profiles'))
+                            ui.menu_item(t('nav.profiles'), on_click=lambda: ui.navigate.to('/admin/profiles'))
                             ui.menu_item(t('nav.contracts'), on_click=lambda: ui.navigate.to('/admin/contracts'))
                             ui.menu_item(t('nav.settings'), on_click=lambda: ui.navigate.to('/admin/settings'))
 
@@ -179,15 +179,15 @@ def layout(content_func):
 
             # User Menu with logout
             with ui.button(icon='person').props('flat dense round'):
-                with ui.menu():
-                    with ui.row().classes('p-4 gap-2 items-center'):
+                with ui.menu().classes('rt-user-menu'):
+                    with ui.row().classes('p-4 gap-2 items-center rt-user-menu__header'):
                         ui.avatar(icon='person', color=Theme.PRIMARY, text_color='white').props('size=md')
                         ui.label(user.get('full_name') or user.get('email') or 'User').classes('font-medium')
                     ui.separator()
                     def logout():
                         app.storage.user.clear()
                         ui.navigate.to('/login')
-                    ui.menu_item(t('logout'), on_click=logout)
+                    ui.menu_item(t('logout'), on_click=logout).classes('rt-user-menu__item')
 
         # --- Main Content (No Sidebar) ---
         # Store current path for reload

@@ -17,8 +17,8 @@ def affiliates_page():
     with ui.row().classes('items-center mb-6'):
         ui.icon('hub', size='md', color=Theme.SECONDARY)
         Theme.title(t('nav.affiliates'))
-        
-    Theme.subtitle(f"Downline for {user['full_name']}")
+
+    Theme.subtitle(f"{t('affiliates.downline_for')} {user['full_name']}")
     
     with Theme.card():
         # Tree Construction - Using Nested Data
@@ -61,4 +61,4 @@ def affiliates_page():
 
         if not tree_data:
              # Even if just self, tree_data usually has 1 node if get_downline_nested includes root
-             ui.label('No downlines found yet. Start recruiting!').classes('rt-muted italic mt-4')
+             ui.label(t('affiliates.no_downlines')).classes('rt-muted italic mt-4')

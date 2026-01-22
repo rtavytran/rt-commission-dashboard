@@ -256,6 +256,60 @@ create policy "monthly_stats.admin.read"
   ));
 ```
 
+### Step 2.4: Products & Search (Optional - for Shopify Sync)
+
+If syncing products from Shopify:
+
+```sql
+create extension if not exists pg_trgm;
+
+create table if not exists public.products (
+    id text primary key, -- Shopify Product ID (string)
+    title text,
+    body_html text,
+    vendor text,
+    product_type text,
+    handle text,
+    status text,
+    variants jsonb default '[]'::jsonb,
+    images jsonb default '[]'::jsonb,
+    created_at timestamptz,
+    updated_at timestamptz
+);
+
+create index if not exists idx_products_name_trgm on public.products using gin (title gin_trgm_ops);
+
+-- RLS: Public read, Admin write
+alter table public.products enable row level security;
+
+create policy "products.public.read"
+  on public.products for select
+  using (true); -- Publicly visible
+
+create policy "products.admin.all"
+  on public.products for all
+  using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'))
+  with check (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+
+-- Fuzzy Search Function
+create or replace function search_products_fuzzy(search_term text)
+returns setof products as $$
+begin
+    return query
+    select *
+    from products
+    where 
+        title ilike '%' || search_term || '%'
+        or
+        similarity(title, search_term) > 0.3
+    order by 
+        similarity(title, search_term) desc, 
+        title asc
+    limit 10;
+end;
+$$ language plpgsql;
+```
+
 ## 3. Code Implementation
 
 ### Step 3.1: Install Dependencies
