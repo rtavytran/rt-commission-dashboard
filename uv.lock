@@ -2130,7 +2130,7 @@ wheels = [
 
 [[package]]
 name = "rt-commission-dashboard"
-version = "1.2.25"
+version = "1.2.26"
 source = { editable = "." }
 dependencies = [
     { name = "faker" },

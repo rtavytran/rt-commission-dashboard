@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - User filters on Dashboard/Reports now use NiceGUI defaults (no `emit-value/map-options`) with input filtering to prevent `'int' object is not subscriptable` errors when searching or selecting users.
 - User avatar menu text now respects light theme colors so email and "Đăng Xuất" stay visible.
 
+## [1.2.26] - 2026-01-22
+### Fixed
+- Admin dropdown menu text now forces theme text color in light mode.
+- NiceGUI storage now uses per-process path and guards against PermissionError when clearing sessions to avoid Windows file lock crashes.
+
 ## [1.2.19] - 2026-01-12
 ### Added
 - JWT token validation in layout decorator to catch expired tokens and redirect to login with proper message instead of showing 500 error.
