@@ -71,6 +71,8 @@ Thumbs.db
 *.tmp
 *.bak
 tmpclaude-*
+config/settings.yaml
+config/*.local.yaml
 
 # Development scripts (not part of package)
 scripts/
