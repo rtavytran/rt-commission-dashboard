@@ -260,14 +260,72 @@ BEGIN
     RETURN QUERY
     SELECT *
     FROM products
-    WHERE 
+    WHERE
+        id::TEXT ILIKE '%' || search_term || '%'
+        OR
         title ILIKE '%' || search_term || '%'
         OR
         similarity(title, search_term) > 0.3
-    ORDER BY 
-        similarity(title, search_term) DESC, 
+    ORDER BY
+        CASE WHEN id::TEXT ILIKE '%' || search_term || '%' THEN 0 ELSE 1 END,
+        similarity(title, search_term) DESC,
         title ASC
     LIMIT 10;
 END;
 $$ LANGUAGE plpgsql;
+```
+
+#### 4. RPC Function: `search_product_variants_fuzzy`
+Returns flattened product + variant data for order matching. Each row contains product and variant info.
+
+```sql
+CREATE OR REPLACE FUNCTION search_product_variants_fuzzy(search_term TEXT)
+RETURNS TABLE (
+    product_id TEXT,
+    product_name TEXT,
+    variant_id TEXT,
+    variant_title TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        p.id::TEXT AS product_id,
+        p.title AS product_name,
+        (v->>'id')::TEXT AS variant_id,
+        COALESCE(v->>'title', 'Default') AS variant_title
+    FROM products p
+    CROSS JOIN LATERAL jsonb_array_elements(p.variants) AS v
+    WHERE
+        p.id::TEXT ILIKE '%' || search_term || '%'
+        OR
+        (v->>'id')::TEXT ILIKE '%' || search_term || '%'
+        OR
+        p.title ILIKE '%' || search_term || '%'
+        OR
+        similarity(p.title, search_term) > 0.3
+        OR
+        (v->>'title') ILIKE '%' || search_term || '%'
+    ORDER BY
+        CASE
+            WHEN p.id::TEXT ILIKE '%' || search_term || '%' THEN 0
+            WHEN (v->>'id')::TEXT ILIKE '%' || search_term || '%' THEN 1
+            ELSE 2
+        END,
+        similarity(p.title, search_term) DESC,
+        p.title ASC,
+        v->>'title' ASC
+    LIMIT 20;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Usage:**
+```sql
+-- Via Supabase RPC
+SELECT * FROM search_product_variants_fuzzy('sungen wide 15');
+
+-- Returns:
+-- product_id | product_name                      | variant_id | variant_title
+-- 123456     | Tấm lót hỗ trợ vòm bàn chân SUNGEN | 789012     | Wide 15
+-- 123456     | Tấm lót hỗ trợ vòm bàn chân SUNGEN | 789013     | Wide 16
 ```

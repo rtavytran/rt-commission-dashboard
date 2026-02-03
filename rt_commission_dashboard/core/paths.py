@@ -17,7 +17,9 @@ def get_data_dir():
         expanded_dir = os.path.expandvars(env_dir)
         path = Path(expanded_dir)
         # Create parent directories if needed
-        os.makedirs(os.path.dirname(str(path)), exist_ok=True)
+        parent_dir = os.path.dirname(str(path))
+        if parent_dir:
+            os.makedirs(parent_dir, exist_ok=True)
         os.makedirs(str(path), exist_ok=True)
         return path
 

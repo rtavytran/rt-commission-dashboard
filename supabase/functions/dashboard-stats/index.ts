@@ -146,10 +146,12 @@ serve(async (req: Request) => {
     const token = authHeader.replace('Bearer ', '')
 
     // ===== STEP 2: Validate JWT (try Keycloak first, then Supabase) =====
-    const authResult = await validateToken(token)
+    const { result: authResult, reason: authReason } = await validateToken(token)
 
     if (!authResult) {
-      return corsResponse({ error: 'Invalid or expired token' }, 401)
+      const msg = authReason || 'Invalid or expired token'
+      console.error(msg)
+      return corsResponse({ error: 'Invalid or expired token', detail: msg }, 401)
     }
 
     console.log(`[${new Date().toISOString()}] Authenticated request - Email: ${authResult.email}, Method: ${authResult.method}`)
@@ -313,28 +315,32 @@ serve(async (req: Request) => {
 /**
  * Validate token - tries Keycloak JWT first, then Supabase JWT
  */
-async function validateToken(token: string): Promise<AuthResult | null> {
+async function validateToken(token: string): Promise<{ result: AuthResult | null, reason?: string }> {
+  let lastReason = ''
+
   // Try Keycloak JWT first (for OAuth2 flow)
   try {
     const keycloakResult = await validateKeycloakJWT(token)
     if (keycloakResult) {
-      return keycloakResult
+      return { result: keycloakResult }
     }
   } catch (error) {
-    console.log('Not a Keycloak JWT, trying Supabase:', error.message)
+    lastReason = (error as Error)?.message || 'Keycloak validation failed'
+    console.log('Not a Keycloak JWT, trying Supabase:', lastReason)
   }
 
   // Try Supabase JWT (for OTP flow)
   try {
     const supabaseResult = await validateSupabaseJWT(token)
     if (supabaseResult) {
-      return supabaseResult
+      return { result: supabaseResult }
     }
   } catch (error) {
-    console.log('Not a Supabase JWT:', error.message)
+    lastReason = (error as Error)?.message || 'Supabase validation failed'
+    console.log('Not a Supabase JWT:', lastReason)
   }
 
-  return null
+  return { result: null, reason: lastReason || 'Token validation failed' }
 }
 
 /**
